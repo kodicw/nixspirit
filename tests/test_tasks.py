@@ -1,8 +1,9 @@
-import os
-import sys
 from unittest.mock import patch, MagicMock
 
 # Ensure scripts directory is in sys.path
+import sys
+import os
+
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
 import jbot_tasks as tasks
 
@@ -53,7 +54,7 @@ def test_get_granular_tasks():
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
-        # Mock ls results
+        # Mock ls results for 1 call
         mock_client.ls.return_value = [
             MagicMock(id="10", title="Real Task"),
             MagicMock(id="11", title="ADR: Something"),
@@ -159,14 +160,16 @@ def test_parse_tasks_vision_fallback():
 
 
 def test_get_granular_tasks_missing_data():
-    # Test lines 24 and 35
     with patch("jbot_tasks.get_memory_client") as mock_nb_class:
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
+
+        # 1 call to ls
         mock_client.ls.return_value = [
             MagicMock(id="1", title="T1"),
             MagicMock(id="2", title="T2"),
         ]
+
         # First one missing status, second one show fails
         mock_client.show.side_effect = ["No status here", None]
         tasks_list = tasks._get_granular_tasks()
