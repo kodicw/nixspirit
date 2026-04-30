@@ -13,7 +13,7 @@ let
 
   agentModule = _: {
     options = {
-      enable = lib.mkEnableOption "this JBot agent";
+      enable = lib.mkEnableOption "this Nix Spirit agent";
       role = lib.mkOption {
         type = lib.types.str;
         default = "General Developer";
@@ -32,7 +32,7 @@ let
       interval = lib.mkOption {
         type = lib.types.str;
         default = "hourly";
-        description = "Systemd calendar interval for the JBot agent.";
+        description = "Systemd calendar interval for the Nix Spirit agent.";
       };
       geminiPackage = lib.mkOption {
         type = lib.types.package;
@@ -105,9 +105,47 @@ let
       lib.mapAttrs (_name: agent: {
         inherit (agent) role description interval;
         projectDir = toString agent.projectDir;
-      }) cfg.agents
+      }) allAgents
     )
   );
+
+  # Discovery Logic
+  discoveredAgents =
+    if cfg.discoveryRoot != null then
+      let
+        root = toString cfg.discoveryRoot;
+        dirContent = builtins.readDir root;
+        subDirs = lib.filterAttrs (_name: type: type == "directory") dirContent;
+        processDir =
+          name: _:
+          let
+            projectDir = root + "/${name}";
+            agentsFile = projectDir + "/.jbot/agents.json";
+          in
+          if builtins.pathExists agentsFile then
+            let
+              agentsData = builtins.fromJSON (builtins.readFile agentsFile);
+            in
+            lib.mapAttrs' (
+              agentName: agentInfo:
+              lib.nameValuePair "${name}-${agentName}" (
+                agentInfo
+                // {
+                  inherit projectDir;
+                  enable = agentInfo.enable or true;
+                }
+              )
+            ) agentsData
+          else
+            { };
+        allAgentsList = lib.mapAttrsToList processDir subDirs;
+      in
+      lib.foldl (a: b: a // b) { } allAgentsList
+    else
+      { };
+
+  # Merge discovered agents with manually defined ones (manual overrides discovery)
+  allAgents = discoveredAgents // cfg.agents;
 
   corePackages = [
     pkgs.coreutils
@@ -144,16 +182,21 @@ let
   ];
 
   # Pick a representative project directory for maintenance if multiple exist
-  firstAgent = lib.head (lib.attrValues cfg.agents ++ [ { projectDir = "/dev/null"; } ]);
+  firstAgent = lib.head (lib.attrValues allAgents ++ [ { projectDir = "/dev/null"; } ]);
   maintenanceProjectDir = firstAgent.projectDir;
 in
 {
   options.programs.jbot = {
-    enable = lib.mkEnableOption "JBot AI Agent Scheduler";
+    enable = lib.mkEnableOption "Nix Spirit AI Agent Scheduler";
     projectDir = lib.mkOption {
       type = lib.types.path;
       default = config.home.homeDirectory + "/code/jbot";
       description = "The default project directory for all agents.";
+    };
+    discoveryRoot = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = "Root directory to scan for Nix Spirit projects (requires --impure if outside flake).";
     };
     promptFile = lib.mkOption {
       type = lib.types.path;
@@ -163,7 +206,7 @@ in
     maintenanceInterval = lib.mkOption {
       type = lib.types.str;
       default = "hourly";
-      description = "Systemd calendar interval for the JBot maintenance service.";
+      description = "Systemd calendar interval for the Nix Spirit maintenance service.";
     };
     agents = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule agentModule);
@@ -176,9 +219,9 @@ in
     assertions = [
       {
         assertion = lib.all (agent: lib.hasPrefix config.home.homeDirectory (toString agent.projectDir)) (
-          lib.attrValues cfg.agents
+          lib.attrValues allAgents
         );
-        message = "JBot agents must operate within the user's home directory (${config.home.homeDirectory}) to maintain single-user isolation.";
+        message = "Nix Spirit agents must operate within the user's home directory (${config.home.homeDirectory}) to maintain single-user isolation.";
       }
     ];
 
@@ -214,8 +257,10 @@ in
         lib.concatStringsSep "\n" (
           lib.mapAttrsToList (
             name: agent:
-            "- **${name}**: ${agent.role} (Interval: ${agent.interval}, DependsOn: ${lib.concatStringsSep ", " agent.dependsOn})"
-          ) cfg.agents
+            "- **${name}**: ${agent.role} (Interval: ${agent.interval or "hourly"}, DependsOn: ${
+              lib.concatStringsSep ", " (agent.dependsOn or [ ])
+            })"
+          ) allAgents
         )
       }")
 
@@ -237,7 +282,7 @@ in
           ]
         }"
         export NB_BIN="${pkgs.nb}/bin/nb"
-        export NB_USER_NAME="JBot (${config.home.username})"
+        export NB_USER_NAME="Nix Spirit (${config.home.username})"
         export NB_USER_EMAIL="${config.home.username}@nixos"
         echo "$AUDIT_CONTENT" | "$JBOT_BIN" maintenance push-note --title "ADR: Environment and Tool Registry" --tags "type:adr,type:audit" || true
       fi
@@ -247,18 +292,18 @@ in
       (lib.mapAttrs' (
         name: agent:
         lib.nameValuePair "jbot-agent-${name}" (
-          lib.mkIf agent.enable {
+          lib.mkIf (agent.enable or true) {
             Unit = {
-              Description = "Scheduled JBot AI Developer: ${agent.role}";
-              After = map (n: "jbot-agent-${n}.service") agent.dependsOn;
-              Wants = map (n: "jbot-agent-${n}.service") agent.dependsOn;
+              Description = "Scheduled Nix Spirit AI Developer: ${agent.role}";
+              After = map (n: "jbot-agent-${n}.service") (agent.dependsOn or [ ]);
+              Wants = map (n: "jbot-agent-${n}.service") (agent.dependsOn or [ ]);
             };
             Service = {
-              CPUQuota = agent.cpuQuota;
-              MemoryMax = agent.memoryLimit;
-              TimeoutStartSec = agent.timeoutStartSec;
-              TimeoutStopSec = agent.timeoutStopSec;
-              KillMode = agent.killMode;
+              CPUQuota = agent.cpuQuota or "25%";
+              MemoryMax = agent.memoryLimit or "2G";
+              TimeoutStartSec = agent.timeoutStartSec or "30min";
+              TimeoutStopSec = agent.timeoutStopSec or "5min";
+              KillMode = agent.killMode or "mixed";
               Delegate = true;
               Environment = [
                 "PATH=${
@@ -267,10 +312,10 @@ in
                     ++ [
                       pkgs.bubblewrap
                       pkgs.coreutils
-                      agent.geminiPackage
-                      agent.opencodePackage
+                      (agent.geminiPackage or pkgs.gemini-cli)
+                      (agent.opencodePackage or pkgs.hello)
                     ]
-                    ++ agent.extraPackages
+                    ++ (agent.extraPackages or [ ])
                   )
                 }"
                 "SKIP_VM_TESTS=1"
@@ -279,8 +324,22 @@ in
               # Systemd sandboxing for extra security
               ProtectSystem = "strict";
               ProtectHome = "read-only";
+              PrivateTmp = true;
+              PrivateDevices = true;
+              ProtectControlGroups = true;
+              ProtectKernelTunables = true;
+              ProtectKernelModules = true;
+              RestrictAddressFamilies = [
+                "AF_UNIX"
+                "AF_INET"
+                "AF_INET6"
+              ];
+              RestrictRealtime = true;
+              RestrictNamespaces = false; # Needed for bubblewrap
+              LockPersonality = true;
+
               BindPaths = [
-                agent.projectDir
+                (toString agent.projectDir)
                 "${config.home.homeDirectory}/.gemini"
                 "${config.home.homeDirectory}/.config/gh"
                 "${config.home.homeDirectory}/.nb"
@@ -291,17 +350,17 @@ in
                 # Export all required environment variables for the standalone launcher
                 export AGENT_NAME="${name}"
                 export AGENT_ROLE="${agent.role}"
-                export AGENT_DESCRIPTION="${agent.description}"
-                export PROJECT_DIR="${agent.projectDir}"
-                export PROMPT_FILE="${agent.promptFile}"
+                export AGENT_DESCRIPTION="${agent.description or ""}"
+                export PROJECT_DIR="${toString agent.projectDir}"
+                export PROMPT_FILE="${agent.promptFile or cfg.promptFile}"
                 export CLI_BIN="${
-                  if agent.cliType == "gemini" then
-                    "${agent.geminiPackage}/bin/gemini"
+                  if (agent.cliType or "gemini") == "gemini" then
+                    "${agent.geminiPackage or pkgs.gemini-cli}/bin/gemini"
                   else
-                    "${agent.opencodePackage}/bin/opencode"
+                    "${agent.opencodePackage or pkgs.hello}/bin/opencode"
                 }"
-                export CLI_TYPE="${agent.cliType}"
-                export CLI_MODEL="${agent.model}"
+                export CLI_TYPE="${agent.cliType or "gemini"}"
+                export CLI_MODEL="${agent.model or "gemini-1.5-pro"}"
                 export AGENTS_JSON="${agentsJson}"
                 export JBOT_CLI_BIN="${jbot-cli}/bin/jbot"
 
@@ -311,7 +370,7 @@ in
                 export NB_DIR="${config.home.homeDirectory}/.nb"
 
                 # Standard Identity
-                export GIT_AUTHOR_NAME="JBot (${name})"
+                export GIT_AUTHOR_NAME="Nix Spirit (${name})"
                 export GIT_AUTHOR_EMAIL="jbot-${name}@internal.jbot"
                 export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
                 export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
@@ -322,15 +381,15 @@ in
                 exec "${jbot-cli}/scripts/jbot-launcher.sh"
               ''}";
 
-              WorkingDirectory = agent.projectDir;
+              WorkingDirectory = toString agent.projectDir;
             };
           }
         )
-      ) cfg.agents)
+      ) allAgents)
       // {
         jbot-maintenance = {
           Unit = {
-            Description = "JBot Infrastructure Maintenance Service";
+            Description = "Nix Spirit Infrastructure Maintenance Service";
           };
           Service = {
             Environment = [
@@ -349,14 +408,41 @@ in
                 ]
               }"
               "PROJECT_DIR=${maintenanceProjectDir}"
+              "DISCOVERY_ROOT=${if cfg.discoveryRoot != null then toString cfg.discoveryRoot else ""}"
             ];
-            ExecStart = "${jbot-cli}/bin/jbot maintenance";
+
+            # Systemd sandboxing
+            ProtectSystem = "strict";
+            ProtectHome = "read-only";
+            PrivateTmp = true;
+            PrivateDevices = true;
+            ProtectControlGroups = true;
+            ProtectKernelTunables = true;
+            ProtectKernelModules = true;
+            RestrictAddressFamilies = [
+              "AF_UNIX"
+              "AF_INET"
+              "AF_INET6"
+            ];
+            RestrictRealtime = true;
+            RestrictNamespaces = false;
+            LockPersonality = true;
+
+            BindPaths = [
+              maintenanceProjectDir
+              "${config.home.homeDirectory}/.nb"
+            ]
+            ++ (if cfg.discoveryRoot != null then [ (toString cfg.discoveryRoot) ] else [ ]);
+
+            ExecStart = "${jbot-cli}/bin/jbot maintenance run${
+              if cfg.discoveryRoot != null then " --all" else ""
+            }";
             WorkingDirectory = maintenanceProjectDir;
           };
         };
         jbot-knowledge-base = {
           Unit = {
-            Description = "JBot Knowledge Base HTTP Server (nb browse)";
+            Description = "Nix Spirit Knowledge Base HTTP Server (nb browse)";
             After = [ "network.target" ];
           };
           Service = {
@@ -365,6 +451,28 @@ in
               "NB_DIR=${config.home.homeDirectory}/.nb"
               "HOME=${config.home.homeDirectory}"
             ];
+
+            # Systemd sandboxing
+            ProtectSystem = "strict";
+            ProtectHome = "read-only";
+            PrivateTmp = true;
+            PrivateDevices = true;
+            ProtectControlGroups = true;
+            ProtectKernelTunables = true;
+            ProtectKernelModules = true;
+            RestrictAddressFamilies = [
+              "AF_UNIX"
+              "AF_INET"
+              "AF_INET6"
+            ];
+            RestrictRealtime = true;
+            RestrictNamespaces = false;
+            LockPersonality = true;
+
+            BindReadOnlyPaths = [
+              "${config.home.homeDirectory}/.nb"
+            ];
+
             ExecStart = "${pkgs.nb}/bin/nb jbot:browse --serve";
             Restart = "always";
             RestartSec = "10";
@@ -378,12 +486,12 @@ in
       (lib.mapAttrs' (
         name: agent:
         lib.nameValuePair "jbot-agent-${name}" (
-          lib.mkIf agent.enable {
-            Timer.OnCalendar = agent.interval;
+          lib.mkIf (agent.enable or true) {
+            Timer.OnCalendar = agent.interval or "hourly";
             Install.WantedBy = [ "timers.target" ];
           }
         )
-      ) cfg.agents)
+      ) allAgents)
       // {
         jbot-maintenance = {
           Timer.OnCalendar = cfg.maintenanceInterval;

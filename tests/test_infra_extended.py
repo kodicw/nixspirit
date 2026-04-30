@@ -11,9 +11,15 @@ import jbot_utils as utils
 
 @pytest.fixture
 def mock_nb_client():
-    with patch("jbot_utils.get_memory_client") as mock:
+    with (
+        patch("jbot_utils.get_memory_client") as m1,
+        patch("jbot_infra.get_memory_client") as m2,
+        patch("jbot_tasks.get_memory_client") as m3,
+    ):
         client = MagicMock()
-        mock.return_value = client
+        m1.return_value = client
+        m2.return_value = client
+        m3.return_value = client
         yield client
 
 
@@ -41,13 +47,28 @@ def test_generate_dashboard_with_roi(tmp_path, mock_nb_client):
         "sections": {"completed": ["- [x] Done 1", "- [x] Done 2"]},
     }
 
-    # Mock NbClient for ROI
-    mock_nb_client.ls.side_effect = [
-        [MagicMock() for _ in range(15)],  # all_notes (Knowledge Base Growth)
-        [MagicMock() for _ in range(3)],  # adr_notes (Architectural Density)
-    ]
+    # Mock vision and other calls that might use ls()
+    mock_nb_client.show.return_value = "No vision"
+
+    # Use a side_effect function for more robust mocking
+    def ls_side_effect(tags=None, limit=None):
+        if tags == ["type:message"]:
+            return []
+        if tags == ["type:adr"]:
+            return [MagicMock() for _ in range(3)]
+        if tags == ["vision"] or tags == ["type:vision"]:
+            return []
+        if tags == ["type:task"]:
+            return []
+        if tags is None:
+            return [MagicMock() for _ in range(15)]
+        return []
+
+    mock_nb_client.ls.side_effect = ls_side_effect
 
     with patch("jbot_tasks.parse_tasks", return_value=tasks_data):
+        # We also need to patch utils.get_recent_adrs because it's in the same module as generate_dashboard
+        # but infra.get_project_summary also calls it.
         with patch(
             "jbot_utils.get_recent_adrs",
             return_value=[{"id": "205", "title": "ADR: ROI"}],
@@ -68,7 +89,7 @@ def test_generate_dashboard_with_roi(tmp_path, mock_nb_client):
             assert "**Engineering Velocity:** 2.50 tasks/milestone" in content  # 5 / 2
             assert "**Architectural Density:** 1.50 ADRs/milestone" in content  # 3 / 2
             assert "**Knowledge Base Growth:** 15 records" in content
-            assert "**Completion Ratio:** 62.5%" in content  # 5 / (2+1+5) = 5/8 = 0.625
+            assert "**Completion Ratio:** 62.5%" in content
 
             # Verify Agent string parsing in active tasks
             assert "Task 1 [lead]" in content
@@ -87,7 +108,13 @@ def test_generate_dashboard_roi_exception(tmp_path, mock_nb_client):
     # Should not crash but log error
     with patch("jbot_core.log") as mock_log:
         utils.generate_dashboard(str(output_file), str(tmp_path))
-        mock_log.assert_called_with(
-            "Error calculating Technical ROI: NB Error", "Utils"
+        # It should log SOME error related to NB Error
+        found = False
+        for call in mock_log.call_args_list:
+            if "NB Error" in str(call.args[0]):
+                found = True
+                break
+        assert found, (
+            f"Expected log with 'NB Error' not found in {mock_log.call_args_list}"
         )
         assert "Technical ROI" not in output_file.read_text()

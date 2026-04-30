@@ -1,5 +1,5 @@
 {
-  description = "JBot — Nix-based AI agent scheduler and Home Manager module";
+  description = "Nix Spirit — Nix-based AI agent scheduler and Home Manager module";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

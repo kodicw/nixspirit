@@ -54,10 +54,14 @@ def test_get_granular_tasks():
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
-        # Mock ls results for 1 call
-        mock_client.ls.return_value = [
-            MagicMock(id="10", title="Real Task"),
-            MagicMock(id="11", title="ADR: Something"),
+        # Mock ls results for 3 calls (active, backlog, completed)
+        mock_client.ls.side_effect = [
+            [
+                MagicMock(id="10", title="Real Task"),
+                MagicMock(id="11", title="ADR: Something"),
+            ],
+            [],
+            [],
         ]
 
         # Mock show results
@@ -164,29 +168,32 @@ def test_get_granular_tasks_missing_data():
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
-        # 1 call to ls
-        mock_client.ls.return_value = [
-            MagicMock(id="1", title="T1"),
-            MagicMock(id="2", title="T2"),
+        # 3 calls to ls
+        mock_client.ls.side_effect = [
+            [MagicMock(id="1", title="T1"), MagicMock(id="2", title="T2")],
+            [],
+            [],
         ]
 
-        # First one missing status, second one show fails
+        # show is called for T1 and T2
         mock_client.show.side_effect = ["No status here", None]
         tasks_list = tasks._get_granular_tasks()
-        assert len(tasks_list) == 0
+        # It returns 1 because T1 has content (even if it's "No status here")
+        # and it's truthy. The status is inherited from the loop (active).
+        assert len(tasks_list) == 1
+        assert tasks_list[0]["id"] == "1"
 
 
 def test_parse_tasks_old_board_sections():
     # Test lines 123-126, 135, 137, 139
-    old_board = (
-        "## Active Tasks\n- [ ] A\n## Backlog\n- [ ] B\n## Completed\n- [x] C\n- [X] D"
-    )
+    old_board = "- [x] pre-active completed\n## Active Tasks\n- [ ] A\n## Backlog\n- [ ] B\n## Completed\n- [x] C\n- [X] D"
     with patch("jbot_tasks._get_granular_tasks", return_value=[]):
         with patch("jbot_infra.get_note_content", side_effect=[None, old_board]):
             data = tasks.parse_tasks()
             assert "- [ ] A" in data["active"]
             assert "- [ ] B" in data["backlog"]
-            assert data["done_count"] == 2
+            # pre-active completed + C + D = 3
+            assert data["done_count"] == 3
 
 
 def test_update_complete_not_found():
@@ -194,3 +201,38 @@ def test_update_complete_not_found():
     with patch("jbot_tasks._get_granular_tasks", return_value=[]):
         assert tasks.update_task("missing") is False
         assert tasks.complete_task("missing") is False
+
+
+def test_get_task_board_markdown_full():
+    # Test lines 226-227, 231, 238, 250
+    with patch(
+        "jbot_tasks.parse_tasks",
+        return_value={
+            "vision": "World peace.",
+            "active": ["- [ ] Task A"],
+            "backlog": ["- [ ] Task B"],
+            "sections": {"completed": ["## Completed\n", "- [x] Task C\n"]},
+        },
+    ):
+        md = tasks.get_task_board_markdown()
+        assert "World peace." in md
+        assert "- [ ] Task A" in md
+        assert "- [ ] Task B" in md
+        assert "- [x] Task C" in md
+
+
+def test_get_task_board_markdown_empty():
+    # Test lines 233, 240, 252
+    with patch(
+        "jbot_tasks.parse_tasks",
+        return_value={
+            "vision": None,
+            "active": [],
+            "backlog": [],
+            "sections": {"completed": []},
+        },
+    ):
+        md = tasks.get_task_board_markdown()
+        assert "No active tasks." in md
+        assert "No backlog items." in md
+        assert "No recently completed tasks." in md

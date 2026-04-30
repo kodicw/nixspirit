@@ -3,50 +3,44 @@ from typing import Dict, Any, Optional, List
 
 # Context: [[nb:jbot:adr-173]], [[nb:jbot:adr-193]], [[nb:jbot:57]]
 import jbot_core as core
-import jbot_infra as infra
 from jbot_memory_interface import get_memory_client
 
 
 def _get_granular_tasks() -> List[Dict[str, Any]]:
-    """Fetches all granular tasks from nb."""
+    """Fetches all granular tasks from nb using status tags for efficiency."""
     client = get_memory_client()
-    # Use -a to get all notes with the tag
-    notes = client.ls(tags=["type:task"])
-
     tasks_list = []
-    for note in notes:
-        # Exclude notes that are clearly not individual tasks (e.g. ADRs or Task Board)
-        if "ADR:" in note.title or "Task Board" in note.title or "Vision" in note.title:
-            continue
 
-        # Fetch full content to check status and agent
-        content = client.show(note.id)
-        if not content:
-            continue
+    # Fetch tasks by status to avoid listing everything
+    for status in ["active", "backlog", "completed"]:
+        notes = client.ls(tags=["type:task", f"status:{status}"])
 
-        status = None
-        if "status:backlog" in content:
-            status = "backlog"
-        elif "status:completed" in content:
-            status = "completed"
-        elif "status:active" in content:
-            status = "active"
+        for note in notes:
+            # Exclude notes that are clearly not individual tasks
+            if (
+                "ADR:" in note.title
+                or "Task Board" in note.title
+                or "Vision" in note.title
+            ):
+                continue
 
-        if not status:
-            continue
+            # Fetch full content (cached in NbClient if called multiple times)
+            content = client.show(note.id)
+            if not content:
+                continue
 
-        agent_match = re.search(r"Agent:\s*([^)\n]+)", content)
-        agent = agent_match.group(1).strip() if agent_match else None
+            agent_match = re.search(r"Agent:\s*([^)\n]+)", content)
+            agent = agent_match.group(1).strip() if agent_match else None
 
-        tasks_list.append(
-            {
-                "id": note.id,
-                "title": note.title,
-                "content": content,
-                "status": status,
-                "agent": agent,
-            }
-        )
+            tasks_list.append(
+                {
+                    "id": note.id,
+                    "title": note.title,
+                    "content": content,
+                    "status": status,
+                    "agent": agent,
+                }
+            )
     return tasks_list
 
 
@@ -56,6 +50,8 @@ def parse_tasks() -> Dict[str, Any]:
     Context: [[nb:jbot:57]] - Per-Task Note Model
     """
     # 1. Fetch Strategic Vision
+    import jbot_infra as infra
+
     vision = infra.get_vision()
 
     data = {
@@ -92,6 +88,8 @@ def parse_tasks() -> Dict[str, Any]:
 
     # 3. Fallback to old Authoritative Task Board if granular tasks are empty
     if not tasks_list:
+        import jbot_infra as infra
+
         old_tasks = infra.get_note_content("type:tasks")
         if old_tasks:
             # Re-use simplified old parsing logic for migration/compatibility

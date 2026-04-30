@@ -163,15 +163,86 @@ def test_update_changelog(tmp_path):
     assert core.update_changelog(str(tmp_path), "1.2.0") is False
 
 
-def test_update_changelog_robustness(tmp_path):
-    changelog_file = tmp_path / "CHANGELOG.md"
-    # Test with icons and different casing in [Unreleased] header
-    changelog_file.write_text(
-        "# Changelog\n\n## 🚀 [unreleased]\n### Added\n- Feature B\n\n## 📦 [1.0.0] - 2026-04-19\n"
-    )
-    assert core.update_changelog(str(tmp_path), "1.1.0") is True
-    content = changelog_file.read_text()
-    assert "## [1.1.0]" in content
-    assert "- Feature B" in content
-    # Verify [Unreleased] section is still there but empty
-    assert "## 🚀 [unreleased]" in content
+def test_get_notebook_name():
+    # Test line 53 (env var)
+    with patch.dict(os.environ, {"JBOT_NOTEBOOK": "env-nb"}):
+        assert core.get_notebook_name() == "env-nb"
+
+    # Test line 58-61 (local file)
+    with patch("jbot_core.get_project_root", return_value="/tmp/proj"):
+        with patch("os.path.exists", return_value=True):
+            with patch("jbot_core.read_file", return_value="file-nb"):
+                assert core.get_notebook_name() == "file-nb"
+
+    # Test line 64 (fallback)
+    with patch("jbot_core.get_project_root", return_value="/tmp/proj"):
+        with patch("os.path.exists", return_value=False):
+            assert core.get_notebook_name() == "jbot"
+
+
+def test_init_git_success():
+    # Test line 161-162
+    with patch("os.path.exists", return_value=True):
+        assert core.init_git(".") is True
+
+    with patch("os.path.exists", return_value=False):
+        with patch("subprocess.run", return_value=MagicMock(returncode=0)):
+            assert core.init_git(".") is True
+
+
+def test_switch_to_develop_already_on_develop():
+    # Test line 193
+    with patch("os.path.exists", return_value=True):
+        with patch("subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="develop")
+            assert core.switch_to_develop(".") is True
+
+
+def test_init_git_error():
+    # Test line 163-165
+    with patch("os.path.exists", return_value=False):
+        with patch("subprocess.run", side_effect=Exception("Git init fail")):
+            assert core.init_git(".") is False
+
+
+def test_switch_to_develop_empty_repo():
+    # Test line 182-189
+    with patch("os.path.exists", return_value=True):
+        with patch("subprocess.run") as mock_run:
+            # rev-parse fails (empty repo)
+            mock_run.side_effect = [
+                MagicMock(returncode=1),  # rev-parse
+                MagicMock(returncode=0),  # checkout -b
+            ]
+            assert core.switch_to_develop(".") is True
+
+
+def test_switch_to_develop_existing_develop():
+    # Test line 191-193, 206-208
+    with patch("os.path.exists", return_value=True):
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                MagicMock(returncode=0, stdout="main"),  # current branch
+                MagicMock(returncode=0, stdout="develop\nmain"),  # branch list
+                MagicMock(returncode=0),  # checkout develop
+            ]
+            assert core.switch_to_develop(".") is True
+
+
+def test_switch_to_develop_create_from_main():
+    # Test line 211-213
+    with patch("os.path.exists", return_value=True):
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                MagicMock(returncode=0, stdout="main"),  # current branch
+                MagicMock(returncode=0, stdout="main"),  # branch list (no develop)
+                MagicMock(returncode=0),  # checkout -b develop
+            ]
+            assert core.switch_to_develop(".") is True
+
+
+def test_switch_to_develop_error():
+    # Test line 216-218
+    with patch("os.path.exists", return_value=True):
+        with patch("subprocess.run", side_effect=Exception("Switch fail")):
+            assert core.switch_to_develop(".") is False

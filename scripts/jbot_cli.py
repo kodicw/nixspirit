@@ -21,19 +21,18 @@ from jbot_memory_interface import get_memory_client
 
 def get_status(project_dir: str) -> None:
     """Displays the high-level project vision, environment context, and active tasks."""
-    os.chdir(project_dir)
+    summary = infra.get_project_summary(project_dir)
 
     print("\n--- JBot Organization Status ---")
 
-    vision = infra.get_vision(project_dir)
-    print(f"\n🎯 Strategic Vision:\n> {vision}")
+    print(f"\n🎯 Strategic Vision:\n> {summary['vision']}")
 
     # Real-time Environment Context
     print("\n🌍 Environment Context:")
-    print(f"Git Status: {core.get_git_status(project_dir)}")
-    print(f"Nix Flake: {core.get_nix_metadata(project_dir)}")
+    print(f"Git Status: {summary['git_status']}")
+    print(f"Nix Flake: {summary['nix_metadata']}")
 
-    tasks_data = tasks.parse_tasks()
+    tasks_data = summary["tasks"]
     print(f"\n🚀 Active Tasks ({len(tasks_data['active'])}):")
     for t in tasks_data["active"][:5]:
         print(f"  {t}")
@@ -261,7 +260,10 @@ def main():
     # Infra
     m_parser = subparsers.add_parser("maintenance", help="Run maintenance")
     m_sub = m_parser.add_subparsers(dest="m_action")
-    m_sub.add_parser("run", help="Run full maintenance loop")
+    m_run = m_sub.add_parser("run", help="Run full maintenance loop")
+    m_run.add_argument(
+        "--all", action="store_true", help="Run maintenance on all discovered projects"
+    )
     m_sub.add_parser("infra-update", help="Generate automated PR for infra updates")
     push_note_parser = m_sub.add_parser(
         "push-note", help="Stably push/update an nb note"
@@ -378,7 +380,23 @@ def main():
                 sys.exit(1)
         else:
             # Default to full maintenance run if no action or 'run'
-            infra.run_maintenance(project_root)
+            if getattr(args, "all", False):
+                discovery_root = os.environ.get("DISCOVERY_ROOT")
+                if not discovery_root:
+                    print("Error: --all requires DISCOVERY_ROOT environment variable.")
+                    sys.exit(1)
+
+                projects = infra.discover_projects(discovery_root)
+                if not projects:
+                    print(f"No projects discovered in {discovery_root}")
+                    return
+
+                print(f"Discovered {len(projects)} projects for maintenance.")
+                for p in projects:
+                    print(f"Maintaining project: {p}")
+                    infra.run_maintenance(p)
+            else:
+                infra.run_maintenance(project_root)
     elif args.command == "purge":
         c = jbot_rotation.purge_directives(
             os.path.join(project_root, ".jbot/directives"),

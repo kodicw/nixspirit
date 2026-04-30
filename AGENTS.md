@@ -1,4 +1,6 @@
-# JBot Agent Instructions
+# 🌈 Nix Spirit Agent Instructions
+
+![Nix Spirit Banner](assets/spirit.jpeg)
 
 This repository contains strict architectural constraints and specialized tooling. Read this before taking action.
 
@@ -17,7 +19,7 @@ This repository contains strict architectural constraints and specialized toolin
 - **Record Decisions:** Record architectural changes or milestones using: `nb jbot:add --title "ADR: <Topic>"`.
 
 ## 🏗️ Architecture & Constraints
-- **Strict Sandboxing:** JBot agents execute inside a `bubblewrap` sandbox with `ProtectSystem=strict` and `ProtectHome=read-only`. **Never attempt to loosen sandboxing** without a documented security rationale.
+- **Strict Sandboxing:** Nix Spirit agents execute inside a `bubblewrap` sandbox with `ProtectSystem=strict` and `ProtectHome=read-only`. **Never attempt to loosen sandboxing** without a documented security rationale.
 - **No Local Resource Policing:** Agents must not implement local budget or token tracking logic. This is handled strictly by the backend API providers.
 
 ## ⚠️ Operational Gotchas

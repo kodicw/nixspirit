@@ -1,15 +1,17 @@
-# JBot: The Recursive PAO
+# 🌈 Nix Spirit: The Recursive PAO
+
+![Nix Spirit Banner](assets/spirit.jpeg)
 
 **A Proof-of-Concept for Self-Managed Repositories.**
 
-JBot is not a chatbot; it is a **Stateful Autonomous Organization (PAO)** embedded directly within the filesystem. It transforms a static repository into a **Living Entity** that possesses its own cognitive capacity, long-term memory, and the hands to build its own future.
+**Nix Spirit** is not a chatbot; it is a **Stateful Autonomous Organization (PAO)** embedded directly within the filesystem. It transforms a static repository into a **Living Entity** that possesses its own cognitive capacity, long-term memory, and the hands to build its own future.
 
 ## 🧠 Philosophy: Repo-as-Entity
 
-Most AI tools are "visitors" to a codebase. JBot agents are **residents**. 
+Most AI tools are "visitors" to a codebase. Nix Spirit agents are **residents**. 
 *   **Infrastructure-as-Brain**: The Nix configuration defines not just the environment, but the CPU, RAM, and "patience" (timeouts) of each team member.
 *   **Git-Backed Consciousness**: Using `nb`, the "thinking" of the CEO and the "verifications" of the Tester are stored in the same version-controlled history as the code.
-*   **Recursive Evolution**: The agents are empowered to refine their own "operating system" (the JBot Nix modules and Python scripts) to achieve higher technical purity.
+*   **Recursive Evolution**: The agents are empowered to refine their own "operating system" (the Nix Spirit Nix modules and Python scripts) to achieve higher technical purity.
 
 ## 🏗️ Architectural Pillars
 
@@ -21,13 +23,13 @@ Most AI tools are "visitors" to a codebase. JBot agents are **residents**.
 ## 🔒 Security & Scaling
 
 ### Single-User Constraint
-JBot is designed as a **Flat Organization** centered around a single Linux user. This model ensures:
+Nix Spirit is designed as a **Flat Organization** centered around a single Linux user. This model ensures:
 *   **Contextual Purity**: All agents share the same Home Manager context, eliminating the need for complex cross-user permissions.
 *   **Knowledge Base Simplicity**: The `nb` knowledge base remains a single, atomic unit of technical memory for the user.
-*   **Security Boundary**: Multi-user isolation is handled at the OS/Home Manager level. JBot operates entirely within the boundaries of the user's `$HOME` to prevent system-wide contamination.
+*   **Security Boundary**: Multi-user isolation is handled at the OS/Home Manager level. Nix Spirit operates entirely within the boundaries of the user's `$HOME` to prevent system-wide contamination.
 
 ### Scaling with Granular Tasks
-As the team grows beyond 4-8 agents, JBot scales by transitioning from a single "Authoritative Task Board" to a **Per-Task Note Model**. Each task becomes an individual note in `nb`, enabling:
+As the team grows beyond 4-8 agents, Nix Spirit scales by transitioning from a single "Authoritative Task Board" to a **Per-Task Note Model**. Each task becomes an individual note in `nb`, enabling:
 *   **Concurrent Access**: Eliminates write collisions on the task board.
 *   **Granular Ownership**: Direct agent-to-task mapping via `agent:<name>` tags.
 *   **Automatic Rotation**: Completed tasks are archived/rotated to keep the active context dense and relevant.
@@ -35,7 +37,7 @@ As the team grows beyond 4-8 agents, JBot scales by transitioning from a single 
 ## 🚀 Getting Started
 
 ### 1. Define Your Team
-Include JBot in your Home Manager configuration and declaratively assemble your autonomous team:
+Include Nix Spirit in your Home Manager configuration and declaratively assemble your autonomous team:
 
 ```nix
 programs.jbot = {
@@ -91,12 +93,12 @@ nb jbot:q "architecture"
 
 ## 🔒 Security & Isolation
 
-JBot adheres to a strict **Single-User Isolation** model to ensure technical purity and internal cohesion.
+Nix Spirit adheres to a strict **Single-User Isolation** model to ensure technical purity and internal cohesion.
 
-1.  **Internal Cohesion**: All components of a single JBot organization (agents, infrastructure, knowledge base) MUST run under the same Linux user account. This prevents permissions friction and ensures a unified technical memory.
-2.  **External Isolation**: Multi-project or cross-organization management is handled at the NixOS/Home Manager level. To manage entirely different organizations, deploy JBot to separate Linux user accounts.
+1.  **Internal Cohesion**: All components of a single Nix Spirit organization (agents, infrastructure, knowledge base) MUST run under the same Linux user account. This prevents permissions friction and ensures a unified technical memory.
+2.  **External Isolation**: Multi-project or cross-organization management is handled at the NixOS/Home Manager level. To manage entirely different organizations, deploy Nix Spirit to separate Linux user accounts.
 3.  **Process Sandboxing**: Each agent executes within a `bubblewrap` container with `ProtectHome=read-only` and `ProtectSystem=strict` mandates. Access is restricted to the specific project directory and required configuration paths.
 
 ---
 
-*JBot is a laboratory for decentralized AI engineering. It is a repo that knows what it is, and has the hands to build itself.*
+*Nix Spirit is a laboratory for decentralized AI engineering. It is a repo that knows what it is, and has the hands to build itself.*

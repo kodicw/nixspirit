@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import List, Dict, Optional
 
 import jbot_core as core
-import jbot_tasks as tasks
 from jbot_memory_interface import get_memory_client
 
 # Context: [[nb:jbot:adr-210]], [[nb:jbot:adr-193]]
@@ -13,9 +12,10 @@ from jbot_memory_interface import get_memory_client
 
 def update_note_stably(title: str, content: str, tags: List[str]) -> bool:
     """Updates an existing note if found by title and tags, otherwise adds a new one."""
-    client = get_memory_client()
     try:
+        client = get_memory_client()
         notes = client.ls(tags=tags)
+
         target_id = None
         for n in notes:
             if n.title.lower() == title.lower():
@@ -36,7 +36,16 @@ def get_recent_adrs(count: int = 5) -> List[Dict[str, str]]:
     try:
         client = get_memory_client()
         notes = client.ls(tags=["type:adr"])
-        notes.sort(key=lambda x: int(x.id), reverse=True)
+
+        def sort_key(note):
+            try:
+                # Extract numeric part from path-based IDs like 'adr/1'
+                id_str = note.id.split("/")[-1]
+                return int(id_str)
+            except (ValueError, TypeError, IndexError):
+                return 0
+
+        notes.sort(key=sort_key, reverse=True)
 
         results = []
         for note in notes:
@@ -86,35 +95,38 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
     """
     import jbot_infra as infra
 
-    dashboard_content = "# JBot Dashboard\n\n"
-    dashboard_content += (
-        f"*Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n\n"
-    )
-
     try:
-        tasks_data = tasks.parse_tasks()
+        summary = infra.get_project_summary(project_dir)
+        tasks_data = summary["tasks"]
     except Exception as e:
-        core.log(f"Error parsing tasks for dashboard: {e}", "Utils")
-        tasks_data = {
-            "active": [],
-            "done_count": 0,
-            "backlog": [],
-            "vision": "",
-            "sections": {
-                "header": [],
-                "vision": [],
+        core.log(f"Error fetching project summary for dashboard: {e}", "Utils")
+        summary = {
+            "vision": "Error fetching vision.",
+            "team": {},
+            "tasks": {
                 "active": [],
                 "backlog": [],
-                "completed": [],
+                "done_count": 0,
+                "sections": {"active": [], "backlog": [], "completed": []},
             },
+            "recent_messages": [],
+            "adrs": [],
+            "milestones": [],
+            "metrics": None,
+            "git_status": "Unknown",
+            "nix_metadata": "Unknown",
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
+        tasks_data = summary["tasks"]
+
+    dashboard_content = "# JBot Dashboard\n\n"
+    dashboard_content += f"*Last Updated: {summary['timestamp']}*\n\n"
 
     dashboard_content += "## 🎯 Strategic Vision\n"
-    vision = infra.get_vision(project_dir)
-    dashboard_content += f"> {vision}\n\n"
+    dashboard_content += f"> {summary['vision']}\n\n"
 
     dashboard_content += "## 👥 Team Roster\n"
-    agents = infra.get_team_registry(project_dir)
+    agents = summary["team"]
     if agents:
         dashboard_content += (
             "| Agent | Role | Description |\n|-------|------|-------------|\n"
@@ -156,21 +168,24 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
         dashboard_content += "\n"
 
     dashboard_content += "## 📜 Recent ADRs\n"
-    adrs = get_recent_adrs(5)
-    if adrs:
-        for adr in adrs:
+    if summary["adrs"]:
+        for adr in summary["adrs"]:
             dashboard_content += f"- [[nb:{adr['id']}]] {adr['title']}\n"
         dashboard_content += "\n"
     else:
         dashboard_content += "No ADRs found.\n\n"
 
     dashboard_content += "## 💬 Recent Messages\n"
-    msgs_dir = os.path.join(project_dir, ".jbot/messages")
-    recent_msgs = infra.get_recent_messages(msgs_dir, 5)
-    if recent_msgs:
-        for m in reversed(recent_msgs):
+    if summary["recent_messages"]:
+        for m in reversed(summary["recent_messages"]):
             headers = infra.parse_message_headers(m["content"])
-            dashboard_content += f"- **[{headers['from']}]** {headers['subject']} ([{m['filename']}](.jbot/messages/{m['filename']}))\n"
+            if m["filename"].startswith("nb:"):
+                # Link to nb note
+                note_id = m["filename"].replace("nb:", "")
+                dashboard_content += f"- **[{headers['from']}]** {headers['subject']} ([[nb:{note_id}]])\n"
+            else:
+                # Legacy file link
+                dashboard_content += f"- **[{headers['from']}]** {headers['subject']} ([{m['filename']}](.jbot/messages/{m['filename']}))\n"
         dashboard_content += "\n"
     else:
         dashboard_content += "No recent messages.\n\n"
@@ -192,54 +207,26 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
             dashboard_content += "```\n\n"
 
     dashboard_content += "## 📈 Status & Progress\n"
-    changelog_path = core.find_file_upwards("CHANGELOG.md", project_dir)
-    milestone_count = 0
-    if changelog_path and os.path.exists(changelog_path):
-        with open(changelog_path, "r") as f:
-            milestone_count = sum(1 for line in f if line.strip().startswith("- **"))
-
     dashboard_content += f"- **Tasks Completed:** {tasks_data['done_count']}\n"
-    dashboard_content += f"- **Milestones Achieved:** {milestone_count}\n\n"
+    dashboard_content += f"- **Milestones Achieved:** {len(summary['milestones'])}\n\n"
 
-    try:
-        client = get_memory_client()
-        all_notes = client.ls()
-        adr_notes = client.ls(tags=["type:adr"])
-        kb_total = len(all_notes)
-        adr_total = len(adr_notes)
-
-        velocity = (
-            tasks_data["done_count"] / milestone_count if milestone_count > 0 else 0
-        )
-        density = adr_total / milestone_count if milestone_count > 0 else adr_total
-        total_tasks = (
-            len(tasks_data["active"])
-            + len(tasks_data["backlog"])
-            + tasks_data["done_count"]
-        )
-        completion_ratio = (
-            (tasks_data["done_count"] / total_tasks * 100) if total_tasks > 0 else 0
-        )
-
+    if summary["metrics"]:
+        m = summary["metrics"]
         dashboard_content += "### 📊 Technical ROI (Engineering Metrics)\n"
         dashboard_content += (
-            f"- **Engineering Velocity:** {velocity:.2f} tasks/milestone\n"
+            f"- **Engineering Velocity:** {m['velocity']:.2f} tasks/milestone\n"
         )
         dashboard_content += (
-            f"- **Architectural Density:** {density:.2f} ADRs/milestone\n"
+            f"- **Architectural Density:** {m['density']:.2f} ADRs/milestone\n"
         )
-        dashboard_content += f"- **Knowledge Base Growth:** {kb_total} records\n"
-        dashboard_content += f"- **Completion Ratio:** {completion_ratio:.1f}%\n\n"
-    except Exception as e:
-        core.log(f"Error calculating Technical ROI: {e}", "Utils")
+        dashboard_content += f"- **Knowledge Base Growth:** {m['kb_total']} records\n"
+        dashboard_content += f"- **Completion Ratio:** {m['completion_ratio']:.1f}%\n\n"
 
     dashboard_content += "## ✅ Recent Milestones\n"
-    if changelog_path and os.path.exists(changelog_path):
-        with open(changelog_path, "r") as f:
-            milestones = [line.strip() for line in f if line.strip().startswith("- **")]
-            for m in milestones[:5]:
-                dashboard_content += f"{m}\n"
-            dashboard_content += "\n"
+    if summary["milestones"]:
+        for milestone in summary["milestones"]:
+            dashboard_content += f"{milestone}\n"
+        dashboard_content += "\n"
 
     with open(os.path.join(project_dir, output_file), "w") as f:
         f.write(dashboard_content)

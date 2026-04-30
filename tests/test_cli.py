@@ -12,13 +12,15 @@ def test_get_status(tmp_path, capsys):
     goal_file = tmp_path / ".project_goal"
     goal_file.write_text("Company Vision")
 
-    with patch(
-        "jbot_tasks.parse_tasks", return_value={"active": ["Task 1"], "done_count": 0}
-    ):
-        jbot_cli.get_status(str(tmp_path))
-        captured = capsys.readouterr()
-        assert "Company Vision" in captured.out
-        assert "Task 1" in captured.out
+    with patch("jbot_infra.get_vision", return_value="Company Vision"):
+        with patch(
+            "jbot_tasks.parse_tasks",
+            return_value={"active": ["Task 1"], "backlog": [], "done_count": 0},
+        ):
+            jbot_cli.get_status(str(tmp_path))
+            captured = capsys.readouterr()
+            assert "Company Vision" in captured.out
+            assert "Task 1" in captured.out
 
 
 def test_get_tasks(tmp_path, capsys):
@@ -66,33 +68,27 @@ def test_get_logs(tmp_path, capsys):
 
 
 def test_get_messages(tmp_path, capsys):
-    msgs_dir = tmp_path / ".jbot" / "messages"
-    msgs_dir.mkdir(parents=True)
-    (msgs_dir / "2026-04-20_test.txt").write_text(
-        "From: ceo\nSubject: Hello\n\nContent"
-    )
-
-    jbot_cli.get_messages(str(tmp_path))
-    captured = capsys.readouterr()
-    assert "From: ceo - Subject: Hello" in captured.out
-
-    # Error case
-    import shutil
-
-    shutil.rmtree(msgs_dir)
-    jbot_cli.get_messages(str(tmp_path))
-    captured = capsys.readouterr()
-    assert "No messages directory found." in captured.out
+    with patch(
+        "jbot_infra.get_recent_messages",
+        return_value=[
+            {"filename": "nb:1", "content": "From: ceo\nSubject: Hello\n\nContent"}
+        ],
+    ):
+        jbot_cli.get_messages(str(tmp_path))
+        captured = capsys.readouterr()
+        assert "From: ceo - Subject: Hello" in captured.out
 
 
 def test_cli_main_status(tmp_path, capsys):
     (tmp_path / ".project_goal").write_text("Vision")
 
-    with patch(
-        "jbot_tasks.parse_tasks", return_value={"active": ["Task 1"], "done_count": 0}
-    ):
-        with patch("sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "status"]):
-            jbot_cli.main()
+    with patch("jbot_infra.get_vision", return_value="Vision"):
+        with patch(
+            "jbot_tasks.parse_tasks",
+            return_value={"active": ["Task 1"], "backlog": [], "done_count": 0},
+        ):
+            with patch("sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "status"]):
+                jbot_cli.main()
 
     captured = capsys.readouterr()
     assert "Vision" in captured.out
@@ -568,18 +564,20 @@ def test_cli_agent_command_full(tmp_path, capsys):
 
 def test_get_status_advanced(tmp_path, capsys):
     # Test line 23 (vision from tasks_data) and 40 (truncated tasks)
-    with patch(
-        "jbot_tasks.parse_tasks",
-        return_value={
-            "vision": "V",
-            "active": ["T" + str(i) for i in range(10)],
-            "done_count": 5,
-        },
-    ):
-        jbot_cli.get_status(str(tmp_path))
-        captured = capsys.readouterr()
-        assert "Strategic Vision:\n> V" in captured.out
-        assert "... and 5 more." in captured.out
+    with patch("jbot_infra.get_vision", return_value="V"):
+        with patch(
+            "jbot_tasks.parse_tasks",
+            return_value={
+                "vision": "V",
+                "active": ["T" + str(i) for i in range(10)],
+                "backlog": [],
+                "done_count": 5,
+            },
+        ):
+            jbot_cli.get_status(str(tmp_path))
+            captured = capsys.readouterr()
+            assert "Strategic Vision:\n> V" in captured.out
+            assert "... and 5 more." in captured.out
 
 
 def test_cli_maintenance_push_note(tmp_path, capsys):
@@ -659,3 +657,88 @@ def test_cli_agent_selection(tmp_path, capsys):
                 with patch("sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "agent"]):
                     jbot_cli.main()
                     mock_run.assert_called_once()
+
+
+def test_cli_init_failure(tmp_path, capsys):
+    with patch("jbot_init.init_project", return_value=False):
+        with patch("sys.argv", ["jbot_cli.py", "init", str(tmp_path)]):
+            import pytest
+
+            with pytest.raises(SystemExit) as cm:
+                jbot_cli.main()
+            assert cm.value.code == 1
+            assert "Failed to initialize project." in capsys.readouterr().out
+
+
+def test_cli_push_note_failure(tmp_path, capsys):
+    with patch("jbot_utils.update_note_stably", return_value=False):
+        with patch(
+            "sys.argv",
+            [
+                "jbot_cli.py",
+                "-d",
+                str(tmp_path),
+                "maintenance",
+                "push-note",
+                "--title",
+                "T",
+                "--tags",
+                "t",
+            ],
+        ):
+            with patch("sys.stdin.read", return_value="content"):
+                import pytest
+
+                with pytest.raises(SystemExit) as cm:
+                    jbot_cli.main()
+                assert cm.value.code == 1
+                assert "Failed to push note: T" in capsys.readouterr().out
+
+
+def test_cli_infra_update_failure(tmp_path, capsys):
+    with patch("jbot_infra_updates.generate_infra_pr", return_value=False):
+        with patch(
+            "sys.argv",
+            ["jbot_cli.py", "-d", str(tmp_path), "maintenance", "infra-update"],
+        ):
+            import pytest
+
+            with pytest.raises(SystemExit) as cm:
+                jbot_cli.main()
+            assert cm.value.code == 1
+            assert (
+                "Infrastructure update failed or no updates needed."
+                in capsys.readouterr().out
+            )
+
+
+def test_cli_agent_no_registry(tmp_path, capsys):
+    with patch("jbot_infra.get_team_registry", return_value={}):
+        with patch("sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "agent"]):
+            jbot_cli.main()
+            assert "No agents found in registry." in capsys.readouterr().out
+
+
+def test_cli_agent_cancel(tmp_path, capsys):
+    registry = {"agent1": {"role": "dev", "description": "d"}}
+    with patch("jbot_infra.get_team_registry", return_value=registry):
+        with patch("jbot_tui.get_gum_choose", return_value="❌ Cancel"):
+            with patch("sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "agent"]):
+                jbot_cli.main()
+                # Should return without doing anything
+
+
+def test_cli_no_command(tmp_path, capsys):
+    with patch("sys.argv", ["jbot_cli.py"]):
+        with patch("argparse.ArgumentParser.print_help") as mock_help:
+            jbot_cli.main()
+            mock_help.assert_called_once()
+
+
+def test_cli_init_success(tmp_path, capsys):
+    with patch("jbot_init.init_project", return_value=True):
+        with patch(
+            "sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "init", "test-org"]
+        ):
+            jbot_cli.main()
+            assert f"Project initialized in {tmp_path}" in capsys.readouterr().out

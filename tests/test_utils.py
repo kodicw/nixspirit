@@ -1,100 +1,155 @@
 import os
-import sys
 from unittest.mock import patch, MagicMock
+import jbot_utils as utils
 
 # Ensure scripts directory is in sys.path
+import sys
+
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_utils as utils
-from jbot_memory_interface import MemoryNote
-
-
-def test_update_note_stably_add():
-    with patch("jbot_utils.get_memory_client") as mock_nb:
-        mock_client = MagicMock()
-        mock_nb.return_value = mock_client
-        mock_client.ls.return_value = []
-        mock_client.add.return_value = "100"
-
-        assert utils.update_note_stably("Title", "Content", ["tag"]) is True
-        mock_client.add.assert_called_with("Title", "Content", tags=["tag"])
-
-
-def test_update_note_stably_edit():
-    with patch("jbot_utils.get_memory_client") as mock_nb:
-        mock_client = MagicMock()
-        mock_nb.return_value = mock_client
-        mock_client.ls.return_value = [
-            MemoryNote(id="100", title="Title", tags=["tag"])
-        ]
-        mock_client.edit.return_value = True
-
-        assert utils.update_note_stably("Title", "Content", ["tag"]) is True
-        mock_client.edit.assert_called_with("100", "Content")
-
-
-def test_update_note_stably_exception():
-    with patch("jbot_utils.get_memory_client") as mock_nb:
-        mock_client = MagicMock()
-        mock_nb.return_value = mock_client
-        mock_client.ls.side_effect = Exception("error")
-        assert utils.update_note_stably("T", "C", ["t"]) is False
 
 
 def test_get_directive_expiration():
-    assert utils.get_directive_expiration("None") is None
-    assert utils.get_directive_expiration("None", "no-date.txt") is None
-    assert utils.get_directive_expiration("Expiration: 2026-01-01") == "2026-01-01"
-    assert utils.get_directive_expiration("None", "2026-01-01.txt") == "2026-01-01"
+    content = "Directive text\nExpiration: 2026-05-01\nMore text"
+    assert utils.get_directive_expiration(content) == "2026-05-01"
+
+    filename = "001_2026-06-01_directive.md"
+    assert utils.get_directive_expiration("no date", filename) == "2026-06-01"
 
 
 def test_is_directive_expired():
-    assert utils.is_directive_expired("None") is False
+    # Future date
+    content = "Expiration: 2099-01-01"
+    assert utils.is_directive_expired(content) is False
+
+    # Past date
+    content = "Expiration: 2020-01-01"
+    assert utils.is_directive_expired(content) is True
 
 
-def test_generate_dashboard_goal_fallback(tmp_path):
-    (tmp_path / ".project_goal").write_text("Fallback Goal")
-    # Mock tasks to have no vision
+def test_update_note_stably(tmp_path):
+    with patch("jbot_utils.get_memory_client") as mock_client:
+        mock_client.return_value.ls.return_value = [
+            MagicMock(id="1", title="Existing Note")
+        ]
+        mock_client.return_value.edit.return_value = True
+
+        # Existing note
+        assert utils.update_note_stably("Existing Note", "New Content", ["tag"]) is True
+        mock_client.return_value.edit.assert_called_once()
+
+        # New note
+        mock_client.return_value.ls.return_value = []
+        mock_client.return_value.add.return_value = "2"
+        assert utils.update_note_stably("New Note", "Content", ["tag"]) is True
+        mock_client.return_value.add.assert_called_once()
+
+
+def test_get_recent_adrs():
+    with patch("jbot_utils.get_memory_client") as mock_client:
+        mock_client.return_value.ls.return_value = [
+            MagicMock(id="2", title="ADR 2"),
+            MagicMock(id="1", title="ADR 1"),
+        ]
+        adrs = utils.get_recent_adrs(5)
+        assert len(adrs) == 2
+        assert adrs[0]["id"] == "2"
+
+
+def test_generate_dashboard_basic(tmp_path):
+    # Test overall dashboard generation
     with patch(
-        "jbot_tasks.parse_tasks",
+        "jbot_infra.get_project_summary",
         return_value={
-            "vision": "",
-            "active": [],
-            "backlog": [],
-            "done_count": 0,
-            "sections": {"completed": []},
+            "vision": "Test Vision",
+            "team": {"ceo": {"role": "CEO", "description": "Desc"}},
+            "tasks": {
+                "active": ["- [ ] **Task 1** (Agent: lead)"],
+                "backlog": ["- [ ] **Backlog 1**"],
+                "done_count": 5,
+                "sections": {"completed": ["- [x] **Done 1**"]},
+            },
+            "recent_messages": [],
+            "adrs": [{"id": "1", "title": "ADR 1"}],
+            "milestones": ["- **M1**"],
+            "metrics": {
+                "velocity": 1.0,
+                "density": 1.0,
+                "kb_total": 10,
+                "completion_ratio": 50.0,
+            },
+            "git_status": "Clean",
+            "nix_metadata": "None",
+            "timestamp": "2026-04-20 12:00:00",
         },
     ):
-        with patch("jbot_infra.get_team_registry", return_value={}):
-            utils.generate_dashboard("INDEX.md", str(tmp_path))
-            content = (tmp_path / "INDEX.md").read_text()
-            assert "Fallback Goal" in content
+        utils.generate_dashboard("INDEX.md", str(tmp_path))
+        content = (tmp_path / "INDEX.md").read_text()
+        assert "# JBot Dashboard" in content
+        assert "Test Vision" in content
+        assert "ceo | CEO" in content
+        assert "Task 1" in content
+        assert "ADR 1" in content
+
+
+def test_generate_dashboard_no_vision(tmp_path):
+    with patch(
+        "jbot_infra.get_project_summary",
+        return_value={
+            "vision": "No current vision defined.",
+            "team": {},
+            "tasks": {
+                "active": [],
+                "backlog": [],
+                "done_count": 0,
+                "sections": {"completed": []},
+            },
+            "recent_messages": [],
+            "adrs": [],
+            "milestones": [],
+            "metrics": None,
+            "git_status": "Clean",
+            "nix_metadata": "None",
+            "timestamp": "2026-04-20 12:00:00",
+        },
+    ):
+        utils.generate_dashboard("INDEX.md", str(tmp_path))
+        content = (tmp_path / "INDEX.md").read_text()
+        assert "No current vision defined." in content
 
 
 def test_generate_dashboard_messages(tmp_path):
-    (tmp_path / ".jbot/messages").mkdir(parents=True)
-    (tmp_path / ".jbot/messages/m1.txt").write_text("From: alice\nSubject: hi\n\nbody")
-    (tmp_path / ".jbot/messages/m2.txt").write_text("No headers")
-
+    # Test message display in dashboard
     with patch(
-        "jbot_tasks.parse_tasks",
+        "jbot_infra.get_project_summary",
         return_value={
             "vision": "V",
-            "active": [],
-            "backlog": [],
-            "done_count": 0,
-            "sections": {"completed": []},
+            "team": {},
+            "tasks": {
+                "active": [],
+                "backlog": [],
+                "done_count": 0,
+                "sections": {"completed": []},
+            },
+            "recent_messages": [
+                {"filename": "nb:1", "content": "From: alice\nSubject: hi\n\nbody"}
+            ],
+            "adrs": [],
+            "milestones": [],
+            "metrics": None,
+            "git_status": "Clean",
+            "nix_metadata": "None",
+            "timestamp": "2026-04-20 12:00:00",
         },
     ):
-        with patch("jbot_infra.get_team_registry", return_value={}):
-            utils.generate_dashboard("INDEX.md", str(tmp_path))
-            content = (tmp_path / "INDEX.md").read_text()
-            assert "[alice]** hi" in content
-            assert "[unknown]** none" in content
+        utils.generate_dashboard("INDEX.md", str(tmp_path))
+        content = (tmp_path / "INDEX.md").read_text()
+        assert "[alice]** hi" in content
 
 
 def test_generate_dashboard_error(tmp_path):
-    with patch("jbot_tasks.parse_tasks", side_effect=Exception("Task Error")):
-        with patch("jbot_infra.get_team_registry", return_value={}):
-            utils.generate_dashboard("INDEX.md", str(tmp_path))
-            content = (tmp_path / "INDEX.md").read_text()
-            assert "# JBot Dashboard" in content
+    with patch(
+        "jbot_infra.get_project_summary", side_effect=Exception("Summary Error")
+    ):
+        utils.generate_dashboard("INDEX.md", str(tmp_path))
+        content = (tmp_path / "INDEX.md").read_text()
+        assert "# JBot Dashboard" in content

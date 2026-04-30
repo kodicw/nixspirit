@@ -15,6 +15,15 @@ set -euo pipefail
 
 echo "[$(date "+%Y-%m-%d %H:%M:%S")] JBot (${AGENT_NAME}): Launching agent runner in sandbox..."
 
+# Ensure we are on the develop branch before entering the sandbox
+# This provides a consistent environment for the agent.
+if [ -d "${PROJECT_DIR}/.git" ]; then
+    echo "[$(date "+%Y-%m-%d %H:%M:%S")] JBot (${AGENT_NAME}): Ensuring develop branch..."
+    # Check if develop exists, create it if not, then checkout
+    git -C "${PROJECT_DIR}" rev-parse --verify develop >/dev/null 2>&1 || git -C "${PROJECT_DIR}" branch develop
+    git -C "${PROJECT_DIR}" checkout develop || echo "Warning: Could not switch to develop branch."
+fi
+
 mkdir -p "${PROJECT_DIR}/.jbot/queues"
 mkdir -p "${PROJECT_DIR}/.jbot/outbox"
 

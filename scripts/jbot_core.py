@@ -4,7 +4,7 @@ import sys
 import json
 import subprocess
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 
 # --- Logging ---
@@ -36,14 +36,19 @@ def get_project_root(start_dir: str = ".") -> str:
     return os.path.abspath(start_dir)
 
 
-def get_notebook_name(project_dir: str = ".") -> str:
+def get_notebook_name(
+    project_dir: str = ".", env: Optional[Dict[str, str]] = None
+) -> str:
     """
     Determines the nb notebook name for the current project.
-    Precedence: JBOT_NOTEBOOK env > .jbot/notebook file > basename of project_dir.
+    Precedence: env['JBOT_NOTEBOOK'] > .jbot/notebook file > basename of project_dir.
     Default fallback: 'jbot'
     """
     # 1. Environment Variable
-    env_notebook = os.environ.get("JBOT_NOTEBOOK")
+    if env is None:
+        env = os.environ
+
+    env_notebook = env.get("JBOT_NOTEBOOK")
     if env_notebook:
         return env_notebook
 
@@ -56,7 +61,7 @@ def get_notebook_name(project_dir: str = ".") -> str:
             return content
 
     # 3. Fallback
-    return "jbot"
+    return "nix-spirit"
 
 
 def load_json(file_path: str, default: Any = None) -> Any:
@@ -147,7 +152,117 @@ def is_git_clean(project_dir: str = ".") -> bool:
         return False
 
 
+def init_git(project_dir: str = ".") -> bool:
+    """Initializes a git repository if it doesn't exist."""
+    try:
+        if not os.path.exists(os.path.join(project_dir, ".git")):
+            log("Initializing git repository...", "Core")
+            subprocess.run(["git", "-C", project_dir, "init"], check=True)
+            return True
+        return True
+    except Exception as e:
+        log(f"Error initializing git: {e}", "Core")
+        return False
+
+
+def switch_to_develop(project_dir: str = ".") -> bool:
+    """Ensures the repository is on the 'develop' branch."""
+    try:
+        # Check if we are in a git repo
+        if not os.path.exists(os.path.join(project_dir, ".git")):
+            return False
+
+        # Check current branch
+        res = subprocess.run(
+            ["git", "-C", project_dir, "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+        )
+
+        if res.returncode != 0:
+            # Likely an empty repo, just create develop
+            log("Empty repository detected. Creating develop branch...", "Core")
+            subprocess.run(
+                ["git", "-C", project_dir, "checkout", "-b", "develop"],
+                capture_output=True,
+            )
+            return True
+
+        current_branch = res.stdout.strip()
+        if current_branch == "develop":
+            return True
+
+        log(f"Switching from {current_branch} to develop branch...", "Core")
+
+        # Check if develop exists
+        res = subprocess.run(
+            ["git", "-C", project_dir, "branch", "--list", "develop"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        if "develop" in res.stdout:
+            subprocess.run(
+                ["git", "-C", project_dir, "checkout", "develop"], check=True
+            )
+        else:
+            # Create develop from current branch
+            subprocess.run(
+                ["git", "-C", project_dir, "checkout", "-b", "develop"], check=True
+            )
+
+        return True
+    except Exception as e:
+        log(f"Warning: Failed to switch to develop branch: {e}", "Core")
+        return False
+
+
 # --- Versioning ---
+def commit_all(project_dir: str, message: str) -> bool:
+    """Stages all changes and commits them."""
+    try:
+        # Ensure git config for headless environments
+        subprocess.run(
+            ["git", "-C", project_dir, "config", "user.name"], capture_output=True
+        )
+        res_name = subprocess.run(
+            ["git", "-C", project_dir, "config", "user.name"],
+            capture_output=True,
+            text=True,
+        )
+        if not res_name.stdout.strip():
+            subprocess.run(
+                ["git", "-C", project_dir, "config", "user.name", "JBot System"],
+                check=True,
+            )
+
+        res_email = subprocess.run(
+            ["git", "-C", project_dir, "config", "user.email"],
+            capture_output=True,
+            text=True,
+        )
+        if not res_email.stdout.strip():
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    project_dir,
+                    "config",
+                    "user.email",
+                    "system@internal.jbot",
+                ],
+                check=True,
+            )
+
+        subprocess.run(["git", "-C", project_dir, "add", "."], check=True)
+        subprocess.run(["git", "-C", project_dir, "commit", "-m", message], check=True)
+        return True
+    except Exception as e:
+        log(f"Error committing changes: {e}", "Core")
+        return False
+
+
 def get_version(project_dir: str = ".") -> str:
     """Retrieve the current version from the VERSION file."""
     version_path = os.path.join(project_dir, "VERSION")

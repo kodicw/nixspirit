@@ -1,6 +1,6 @@
-# Contributing Guide: JBot Engineering Standards
+# Contributing Guide: Nix Spirit Engineering Standards
 
-**Project:** JBot  
+**Project:** Nix Spirit  
 **Status:** Flat Multi-Agent Organization  
 **Stack:** Nix (Flakes, Home Manager), Python 3, Systemd
 
@@ -8,7 +8,7 @@
 
 ## 1. Architectural Philosophy: Flat Organization
 
-JBot follows a **Flat Organization** model. This means:
+Nix Spirit follows a **Flat Organization** model. This means:
 - **Internal Cohesion:** All components (agents, infra, scripts) live under a single Linux user account.
 - **No Hierarchy:** We avoid nested project structures or "Sub-Organizations". Coordination happens via a shared `TASKS.md` and `.jbot/messages/`.
 - **External Isolation:** Multi-project management is handled by creating *different* Linux users via NixOS/Home Manager.
@@ -27,7 +27,7 @@ JBot follows a **Flat Organization** model. This means:
 - **Style:** 
   - Prefer clear, descriptive variable names.
   - Use `argparse` for all CLI tools.
-  - Maintain a consistent logging format: `[$(date)] JBot (AgentName): Message`.
+  - Maintain a consistent logging format: `[$(date)] Nix Spirit (AgentName): Message`.
 
 ---
 

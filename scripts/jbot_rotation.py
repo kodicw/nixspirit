@@ -76,12 +76,16 @@ def rotate_nb_notes(tag: str, limit: int = 5, preserve_ids: list = None) -> int:
     if len(notes) <= limit:
         return 0
 
+    def sort_key(note):
+        try:
+            # Extract numeric part from path-based IDs like 'adr/1'
+            id_str = note.id.split("/")[-1]
+            return int(id_str)
+        except (ValueError, TypeError, IndexError):
+            return 0
+
     # Sort notes by ID numerically as a proxy for date (higher is newer)
-    try:
-        notes.sort(key=lambda x: int(x.id), reverse=True)
-    except ValueError:
-        # Fallback if some IDs are not numeric (unlikely in nb)
-        return 0
+    notes.sort(key=sort_key, reverse=True)
 
     to_delete = notes[limit:]
     deleted_count = 0

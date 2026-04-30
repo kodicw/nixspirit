@@ -182,6 +182,7 @@ def test_rotate_nb_notes_non_numeric_ids():
     with patch("jbot_rotation.get_memory_client") as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.ls.return_value = mock_notes
+        mock_client.delete.return_value = True
 
-        # Should return 0 due to ValueError in sorting
-        assert rotation.rotate_nb_notes("test", limit=1) == 0
+        # Should return 1 even if sorting failed for all (it deletes tail of list)
+        assert rotation.rotate_nb_notes("test", limit=1) == 1

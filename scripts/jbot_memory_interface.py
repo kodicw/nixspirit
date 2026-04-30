@@ -63,13 +63,33 @@ class MemoryInterface(ABC):
         pass
 
 
+_client_cache = {}
+
+
 def get_memory_client(backend: str = "nb", **kwargs) -> MemoryInterface:
     """
     Factory function to instantiate the configured memory backend.
+    Caches the client instance within the process to improve efficiency.
     """
+    # Convert unhashable dicts in kwargs to hashable tuples for the cache key
+    hashable_kwargs = {}
+    for k, v in kwargs.items():
+        if isinstance(v, dict):
+            hashable_kwargs[k] = tuple(sorted(v.items()))
+        else:
+            hashable_kwargs[k] = v
+
+    # Create a stable cache key based on backend and sorted hashable_kwargs
+    cache_key = (backend, tuple(sorted(hashable_kwargs.items())))
+
+    if cache_key in _client_cache:
+        return _client_cache[cache_key]
+
     if backend == "nb":
         from nb_client import NbClient
 
-        return NbClient(**kwargs)
+        client = NbClient(**kwargs)
+        _client_cache[cache_key] = client
+        return client
     else:
         raise ValueError(f"Unsupported memory backend: {backend}")

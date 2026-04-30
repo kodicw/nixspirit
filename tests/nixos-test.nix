@@ -88,6 +88,10 @@ pkgs.testers.nixosTest {
 
     # Check if the service file contains the expected sandboxing
     machine.succeed("systemctl --user -M testuser cat jbot-agent-dev.service | grep ProtectSystem=strict")
+    machine.succeed("systemctl --user -M testuser cat jbot-agent-dev.service | grep PrivateTmp=true")
+    machine.succeed("systemctl --user -M testuser cat jbot-agent-dev.service | grep PrivateDevices=true")
+    machine.succeed("systemctl --user -M testuser cat jbot-maintenance.service | grep ProtectSystem=strict")
+    machine.succeed("systemctl --user -M testuser cat jbot-knowledge-base.service | grep ProtectSystem=strict")
 
     # Initial setup
     machine.succeed("mkdir -p /home/testuser/project")

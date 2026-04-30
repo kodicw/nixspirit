@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 import jbot_core as core
+import jbot_tasks as tasks
 import jbot_rotation
 import jbot_utils as utils
 from jbot_memory_interface import get_memory_client
@@ -34,28 +35,56 @@ def send_message(
 
 
 def get_recent_messages(
-    msgs_dir: str, count: int = 5, include_human: bool = False
+    msgs_dir: Optional[str] = None,
+    count: int = 5,
+    include_human: bool = False,
+    project_dir: str = ".",
 ) -> List[Dict[str, str]]:
-    """Retrieve the most recent messages from the messages directory."""
-    if not os.path.exists(msgs_dir):
-        return []
-
-    msg_files = sorted(
-        [
-            f
-            for f in os.listdir(msgs_dir)
-            if os.path.isfile(os.path.join(msgs_dir, f))
-            and (include_human or f != "human.txt")
-        ]
-    )
-
+    """
+    Retrieve the most recent messages from nb knowledge base.
+    Also includes human.txt from msgs_dir if enabled for legacy feedback.
+    """
     results = []
-    for mf in msg_files[-count:]:
+
+    # 1. Fetch from nb (Text-First Purity)
+    try:
+        notebook = core.get_notebook_name(project_dir)
+        client = get_memory_client(notebook=notebook)
+        # ls returns notes, we want newest first for 'recent'
+        notes = client.ls(tags=["type:message"], limit=count)
+
+        def sort_key(note):
+            try:
+                # Extract numeric part from path-based IDs like 'adr/1'
+                id_str = note.id.split("/")[-1]
+                return int(id_str)
+            except (ValueError, TypeError, IndexError):
+                return 0
+
+        # Sort by ID descending to ensure we have the most recent
+        notes.sort(key=sort_key, reverse=True)
+
+        for note in notes[:count]:
+            content = client.show(note.id)
+            if content:
+                results.append({"filename": f"nb:{note.id}", "content": content})
+    except Exception as e:
+        core.log(f"Error fetching messages from nb: {e}", "Infra")
+
+    # 2. Fetch human.txt (Legacy/Human-in-the-loop direct feedback)
+    if (
+        include_human
+        and msgs_dir
+        and os.path.exists(os.path.join(msgs_dir, "human.txt"))
+    ):
         try:
-            with open(os.path.join(msgs_dir, mf), "r") as f:
-                results.append({"filename": mf, "content": f.read()})
+            content = core.read_file(os.path.join(msgs_dir, "human.txt"))
+            if content:
+                # We put human input at the end (or beginning? usually end is more 'recent')
+                results.append({"filename": "human.txt", "content": content})
         except Exception:
             pass
+
     return results
 
 
@@ -63,10 +92,10 @@ def parse_message_headers(content: str) -> Dict[str, str]:
     """Parses From and Subject headers from message content."""
     lines = content.split("\n")
     from_line = next(
-        (line for line in lines if line.startswith("From:")), "From: unknown"
+        (line for line in lines if line.strip().startswith("From:")), "From: unknown"
     )
     subject_line = next(
-        (line for line in lines if line.startswith("Subject:")), "Subject: none"
+        (line for line in lines if line.strip().startswith("Subject:")), "Subject: none"
     )
     return {
         "from": from_line.replace("From:", "").strip(),
@@ -77,23 +106,33 @@ def parse_message_headers(content: str) -> Dict[str, str]:
 def get_vision(project_dir: str = ".") -> str:
     """Retrieves the project vision from nb or .project_goal."""
     # 1. Try nb note with type:vision
-    vision_note = get_note_content("type:vision")
+    vision_note = get_note_content("type:vision", project_dir=project_dir)
     if vision_note:
         # Match vision text in Strategic Vision note
+        # Support both "> Vision" and "## Strategic Vision\nVision" formats
         vision_match = re.search(
             r"## Strategic Vision\s*\n*>\s*(.*)", vision_note, re.MULTILINE
         )
         if vision_match:
             return vision_match.group(1).strip()
 
+        # Fallback to lines after the header
+        lines = vision_note.splitlines()
+        for i, line in enumerate(lines):
+            if "## Strategic Vision" in line and i + 1 < len(lines):
+                next_line = lines[i + 1].lstrip("> ").strip()
+                if next_line:
+                    return next_line
+
         # Fallback to direct content if no header match
         lines = [
             line.lstrip("> ").strip()
             for line in vision_note.splitlines()
-            if line.strip()
+            if line.strip() and not line.startswith("##")
         ]
         if lines:
             return lines[0]
+
     # 2. Try .project_goal file
     goal_path = core.find_file_upwards(".project_goal", project_dir)
     if goal_path and os.path.exists(goal_path):
@@ -102,11 +141,12 @@ def get_vision(project_dir: str = ".") -> str:
     return "No current vision defined."
 
 
-def get_note_content(query: str) -> Optional[str]:
+def get_note_content(query: str, project_dir: str = ".") -> Optional[str]:
     """Retrieves the full content of the first nb note matching the query."""
 
     try:
-        client = get_memory_client()
+        notebook = core.get_notebook_name(project_dir)
+        client = get_memory_client(notebook=notebook)
         note_id = None
 
         if query.startswith("type:") or query.startswith("#"):
@@ -114,8 +154,17 @@ def get_note_content(query: str) -> Optional[str]:
             # Use ls for tag queries as it is more precise than q
             notes = client.ls(tags=[tag])
             if notes:
+
+                def sort_key(note):
+                    try:
+                        # Extract numeric part from path-based IDs like 'adr/1'
+                        id_str = note.id.split("/")[-1]
+                        return int(id_str)
+                    except (ValueError, TypeError, IndexError):
+                        return 0
+
                 # Sort by ID descending to get the newest by default
-                notes.sort(key=lambda x: int(x.id), reverse=True)
+                notes.sort(key=sort_key, reverse=True)
                 # Prefer notes with "Authoritative" or "Board" in title for tasks
                 if tag == "tasks":
                     for n in notes:
@@ -200,6 +249,95 @@ def parse_directives(dir_path: str) -> List[Dict[str, str]]:
     return valid_directives
 
 
+# --- Project Summary ---
+def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
+    """
+    Aggregates all relevant project status information into a single structure.
+    Useful for both CLI status display and dashboard generation.
+
+    Context: [[nb:jbot:adr-210]], [[nb:jbot:adr-193]]
+    """
+    try:
+        tasks_data = tasks.parse_tasks()
+    except Exception as e:
+        core.log(f"Error parsing tasks for summary: {e}", "Infra")
+        tasks_data = {
+            "active": [],
+            "done_count": 0,
+            "backlog": [],
+            "vision": "",
+            "sections": {
+                "active": [],
+                "backlog": [],
+                "completed": [],
+            },
+        }
+
+    msgs_dir = os.path.join(project_dir, ".jbot/messages")
+
+    # Fetch ADRs
+    adrs = utils.get_recent_adrs(5)
+
+    # Fetch Milestones (from CHANGELOG.md)
+    changelog_path = core.find_file_upwards("CHANGELOG.md", project_dir)
+    milestones = []
+    milestone_count = 0
+    if changelog_path and os.path.exists(changelog_path):
+        with open(changelog_path, "r") as f:
+            lines = f.readlines()
+            milestones = [
+                line.strip() for line in lines if line.strip().startswith("- **")
+            ][:5]
+            milestone_count = sum(
+                1 for line in lines if line.strip().startswith("- **")
+            )
+
+    # Calculate ROI Metrics
+    try:
+        client = get_memory_client()
+        all_notes = client.ls()
+        adr_notes = client.ls(tags=["type:adr"])
+        kb_total = len(all_notes)
+        adr_total = len(adr_notes)
+
+        velocity = (
+            tasks_data["done_count"] / milestone_count if milestone_count > 0 else 0
+        )
+        density = adr_total / milestone_count if milestone_count > 0 else adr_total
+        total_tasks = (
+            len(tasks_data["active"])
+            + len(tasks_data["backlog"])
+            + tasks_data["done_count"]
+        )
+        completion_ratio = (
+            (tasks_data["done_count"] / total_tasks * 100) if total_tasks > 0 else 0
+        )
+        metrics = {
+            "velocity": velocity,
+            "density": density,
+            "kb_total": kb_total,
+            "completion_ratio": completion_ratio,
+        }
+    except Exception as e:
+        core.log(f"Error calculating Technical ROI: {e}", "Infra")
+        metrics = None
+
+    return {
+        "vision": get_vision(project_dir),
+        "team": get_team_registry(project_dir),
+        "tasks": tasks_data,
+        "recent_messages": get_recent_messages(
+            msgs_dir, 5, project_dir=project_dir, include_human=True
+        ),
+        "adrs": adrs,
+        "milestones": milestones,
+        "metrics": metrics,
+        "git_status": core.get_git_status(project_dir),
+        "nix_metadata": core.get_nix_metadata(project_dir),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
 # --- Maintenance ---
 def initialize_infrastructure(project_dir: str) -> None:
     """Ensures all required JBot infrastructure directories exist."""
@@ -216,23 +354,44 @@ def initialize_infrastructure(project_dir: str) -> None:
 
 
 def consolidate_messages(project_dir: str) -> None:
-    """Moves messages from agent outboxes to the centralized message directory."""
-    import shutil
-
+    """Consolidates messages from agent outboxes into the nb knowledge base."""
     outbox_dir = os.path.join(project_dir, ".jbot/outbox")
-    messages_dir = os.path.join(project_dir, ".jbot/messages")
 
     if not os.path.exists(outbox_dir):
         return
 
+    # Ensure NB environment variables for identity are respected
+    env = os.environ.copy()
+    if "NB_USER_NAME" not in env:
+        env["NB_USER_NAME"] = "JBot System"
+    if "NB_USER_EMAIL" not in env:
+        env["NB_USER_EMAIL"] = "system@internal.jbot"
+
+    notebook = core.get_notebook_name(project_dir)
+    client = get_memory_client(notebook=notebook, env=env)
+
     for msg_file in os.listdir(outbox_dir):
         if msg_file.endswith(".txt"):
+            file_path = os.path.join(outbox_dir, msg_file)
             try:
-                shutil.move(
-                    os.path.join(outbox_dir, msg_file),
-                    os.path.join(messages_dir, msg_file),
+                content = core.read_file(file_path)
+                if not content:
+                    continue
+
+                # Parse headers for a better title
+                headers = parse_message_headers(content)
+                title = f"Message: [{headers['from']}] {headers['subject']}"
+
+                # Push to nb
+                client.add(
+                    title=title,
+                    content=content,
+                    tags=["type:message", f"from:{headers['from']}"],
                 )
-                core.log(f"Consolidated message: {msg_file}", "Maintenance")
+
+                # Delete outbox file (finalized in nb)
+                os.remove(file_path)
+                core.log(f"Consolidated message to nb: {msg_file}", "Maintenance")
             except Exception as e:
                 core.log(f"Error consolidating message {msg_file}: {e}", "Maintenance")
 
@@ -291,3 +450,17 @@ def run_maintenance(project_dir: str) -> bool:
     except Exception as e:
         core.log(f"Maintenance failed: {e}", "Maintenance")
         return False
+
+
+def discover_projects(root_dir: str) -> List[str]:
+    """Scans a root directory for JBot projects (directories containing .jbot/agents.json)."""
+    projects = []
+    if not os.path.isdir(root_dir):
+        return projects
+
+    for item in os.listdir(root_dir):
+        path = os.path.join(root_dir, item)
+        if os.path.isdir(path):
+            if os.path.exists(os.path.join(path, ".jbot", "agents.json")):
+                projects.append(path)
+    return projects
