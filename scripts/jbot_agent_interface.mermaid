@@ -1,0 +1,21 @@
+classDiagram
+    class AiInterface {
+        <<abstract>>
+        +binary_path: str
+        +model: str
+        +get_command(prompt: str)* List[str]
+        +run(prompt: str, agent_name: str) int
+    }
+    class GeminiInterface {
+        +get_command(prompt: str) List[str]
+    }
+    class OpenCodeInterface {
+        +get_command(prompt: str) List[str]
+    }
+    AiInterface <|-- GeminiInterface
+    AiInterface <|-- OpenCodeInterface
+
+    class Factory {
+        +get_interface(name, binary_path) AiInterface
+    }
+    Factory ..> AiInterface : creates

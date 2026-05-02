@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-210]]
 import os
 import sys
 
@@ -94,8 +95,12 @@ def get_messages(project_dir: str, count: int = 5) -> None:
     print(f"\n--- Recent Messages (Last {len(messages)}) ---")
     for m in messages:
         headers = infra.parse_message_headers(m["content"])
+        reply_str = ""
+        if "in_reply_to" in headers:
+            reply_str = f" (Re: [[nb:{headers['in_reply_to']}]])"
+
         print(
-            f"[{m['filename']}] From: {headers['from']} - Subject: {headers['subject']}"
+            f"[{m['filename']}] From: {headers['from']} - Subject: {headers['subject']}{reply_str}"
         )
 
 
@@ -256,6 +261,9 @@ def main():
     send_msg_parser.add_argument("-f", "--from-agent", required=True)
     send_msg_parser.add_argument("-s", "--subject", default="No Subject")
     send_msg_parser.add_argument("-m", "--message", required=True)
+    send_msg_parser.add_argument(
+        "-r", "--reply-to", help="NB ID of the message to reply to"
+    )
 
     # Infra
     m_parser = subparsers.add_parser("maintenance", help="Run maintenance")
@@ -354,7 +362,7 @@ def main():
         get_messages(project_root, args.count)
     elif args.command == "send-message":
         if infra.send_message(
-            project_root, args.from_agent, args.message, args.subject
+            project_root, args.from_agent, args.message, args.subject, args.reply_to
         ):
             print("Message sent successfully.")
     elif args.command == "maintenance":

@@ -1,0 +1,11 @@
+graph TD
+    START[generate_infra_pr] --> CLEAN{Git Clean?}
+    CLEAN -- No --> ABORT[Abort]
+    CLEAN -- Yes --> UPDATE[nix flake update]
+    UPDATE --> LOCK{flake.lock changed?}
+    LOCK -- No --> NO_UPD[Log: No updates]
+    LOCK -- Yes --> BRANCH[Create infra/update-TIMESTAMP branch]
+    BRANCH --> ADD[git add flake.lock]
+    ADD --> COMMIT[git commit -m ...]
+    COMMIT --> NOTIFY[infra.send_message: Notify CEO/Lead]
+    NOTIFY --> BACK[git checkout -]

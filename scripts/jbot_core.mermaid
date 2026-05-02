@@ -1,0 +1,47 @@
+graph TD
+    subgraph Logging
+        LOG[log: Standardized Logging]
+    end
+
+    subgraph "Paths & Files"
+        FFU[find_file_upwards]
+        GPR[get_project_root]
+        LJ[load_json]
+        SJ[save_json]
+        RF[read_file]
+        WF[write_file]
+    end
+
+    subgraph "Notebook Management"
+        GNN[get_notebook_name]
+    end
+
+    subgraph "Security & Isolation"
+        ESU[ensure_single_user: Constraint Enforcement]
+    end
+
+    subgraph Git
+        IGC[is_git_clean]
+        IG[init_git]
+        STD[switch_to_develop]
+        CA[commit_all]
+    end
+
+    subgraph Versioning
+        GV[get_version]
+        BV[bump_version]
+        UC[update_changelog]
+    end
+
+    subgraph Metadata
+        GGS[get_git_status]
+        GNM[get_nix_metadata]
+    end
+
+    GPR --> FFU
+    GNN --> GPR
+    GNN --> RF
+    BV --> GV
+    BV --> WF
+    UC --> RF
+    UC --> WF

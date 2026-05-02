@@ -1,3 +1,4 @@
+# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-63]], [[nb:jbot:adr-193]], [[nb:jbot:adr-210]]
 import os
 import re
 import sys
@@ -60,8 +61,12 @@ def get_notebook_name(
         if content:
             return content
 
-    # 3. Fallback
-    return "nix-spirit"
+    # 3. Basename of project_dir
+    if root:
+        return os.path.basename(root)
+
+    # 4. Final Fallback
+    return "jbot"
 
 
 def load_json(file_path: str, default: Any = None) -> Any:

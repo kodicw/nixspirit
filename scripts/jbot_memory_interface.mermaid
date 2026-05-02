@@ -1,0 +1,24 @@
+classDiagram
+    class MemoryNote {
+        +id: str
+        +title: str
+        +tags: List[str]
+        +content: str
+        +filename: str
+    }
+    class MemoryInterface {
+        <<abstract>>
+        +add(title, content, tags, overwrite)* str
+        +show(note_id)* str
+        +query(query)* List[MemoryNote]
+        +edit(note_id, content, title, tags, overwrite)* bool
+        +ls(tags, limit)* List[MemoryNote]
+        +delete(note_id)* bool
+    }
+
+    class Factory {
+        +get_memory_client(backend, **kwargs) MemoryInterface
+    }
+
+    Factory ..> MemoryInterface : creates
+    MemoryInterface ..> MemoryNote : uses

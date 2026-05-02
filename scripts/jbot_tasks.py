@@ -1,7 +1,7 @@
+# Context: [[nb:jbot:adr-57]], [[nb:jbot:adr-210]]
 import re
 from typing import Dict, Any, Optional, List
 
-# Context: [[nb:jbot:adr-173]], [[nb:jbot:adr-193]], [[nb:jbot:57]]
 import jbot_core as core
 from jbot_memory_interface import get_memory_client
 
@@ -41,6 +41,14 @@ def _get_granular_tasks() -> List[Dict[str, Any]]:
                     "agent": agent,
                 }
             )
+
+    def sort_key(t):
+        try:
+            return int(t["id"].split("/")[-1])
+        except (ValueError, TypeError, IndexError):
+            return 0
+
+    tasks_list.sort(key=sort_key, reverse=True)
     return tasks_list
 
 

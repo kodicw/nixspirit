@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # JBot Agent Launcher Script
-# Context: [[nb:jbot:202]] (ADR: Formal Verification for Bash Infrastructure)
+# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]]
 set -euo pipefail
 
 # Required environment variables:

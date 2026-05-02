@@ -1,3 +1,4 @@
+# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-62]], [[nb:jbot:adr-193]], [[nb:jbot:adr-210]]
 import os
 import json
 import re
@@ -19,7 +20,11 @@ def get_team_registry(project_dir: str = ".") -> Dict[str, Any]:
 
 # --- Messages ---
 def send_message(
-    project_dir: str, agent_name: str, body: str, subject: str = "No Subject"
+    project_dir: str,
+    agent_name: str,
+    body: str,
+    subject: str = "No Subject",
+    in_reply_to: Optional[str] = None,
 ) -> bool:
     """Sends a message by writing it to the .jbot/outbox directory."""
     outbox_dir = os.path.join(project_dir, ".jbot", "outbox")
@@ -30,7 +35,10 @@ def send_message(
     filename = f"{timestamp}_{microsecond}_{agent_name}.txt"
     file_path = os.path.join(outbox_dir, filename)
 
-    message_content = f"To: all\nFrom: {agent_name}\nSubject: {subject}\n\n{body}\n"
+    message_content = f"To: all\nFrom: {agent_name}\nSubject: {subject}\n"
+    if in_reply_to:
+        message_content += f"In-Reply-To: {in_reply_to}\n"
+    message_content += f"\n{body}\n"
     return core.write_file(file_path, message_content)
 
 
@@ -89,7 +97,7 @@ def get_recent_messages(
 
 
 def parse_message_headers(content: str) -> Dict[str, str]:
-    """Parses From and Subject headers from message content."""
+    """Parses From, Subject, and optional In-Reply-To headers from message content."""
     lines = content.split("\n")
     from_line = next(
         (line for line in lines if line.strip().startswith("From:")), "From: unknown"
@@ -97,10 +105,17 @@ def parse_message_headers(content: str) -> Dict[str, str]:
     subject_line = next(
         (line for line in lines if line.strip().startswith("Subject:")), "Subject: none"
     )
-    return {
+    reply_to_line = next(
+        (line for line in lines if line.strip().startswith("In-Reply-To:")), None
+    )
+
+    headers = {
         "from": from_line.replace("From:", "").strip(),
         "subject": subject_line.replace("Subject:", "").strip(),
     }
+    if reply_to_line:
+        headers["in_reply_to"] = reply_to_line.replace("In-Reply-To:", "").strip()
+    return headers
 
 
 def get_vision(project_dir: str = ".") -> str:
@@ -382,11 +397,15 @@ def consolidate_messages(project_dir: str) -> None:
                 headers = parse_message_headers(content)
                 title = f"Message: [{headers['from']}] {headers['subject']}"
 
+                tags = ["type:message", f"from:{headers['from']}"]
+                if "in_reply_to" in headers:
+                    tags.append(f"reply_to:{headers['in_reply_to']}")
+
                 # Push to nb
                 client.add(
                     title=title,
                     content=content,
-                    tags=["type:message", f"from:{headers['from']}"],
+                    tags=tags,
                 )
 
                 # Delete outbox file (finalized in nb)

@@ -1,0 +1,21 @@
+graph TD
+    UTILS[jbot_utils.py] --> UNS[update_note_stably]
+    UTILS --> ADR[get_recent_adrs]
+    UTILS --> EXP[Expiration Logic]
+    UTILS --> DASH[generate_dashboard]
+
+    subgraph "Expiration Logic"
+        GDE[get_directive_expiration]
+        IDE[is_directive_expired]
+        IDE --> GDE
+    end
+
+    subgraph "Dashboard Generation"
+        DASH --> infra[jbot_infra: get_project_summary]
+        DASH --> MER[Embed Mermaid Diagrams]
+        DASH --> TASK[Format Task Board]
+        DASH --> MSG[Format Messages]
+    end
+
+    UNS --> mem[jbot_memory_interface]
+    ADR --> mem

@@ -97,6 +97,11 @@ let
         default = "mixed";
         description = "Systemd KillMode for this agent.";
       };
+      useDBus = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Whether to expose the D-Bus session bus to the agent.";
+      };
     };
   };
 
@@ -175,8 +180,9 @@ let
     pkgs.ripgrep
     pkgs.gum
     pkgs.pandoc
-    pkgs.nmap
     pkgs.w3m
+    pkgs.bandit
+    pkgs.safety
     jbotPython
     jbot-cli
   ];
@@ -340,10 +346,13 @@ in
 
               BindPaths = [
                 (toString agent.projectDir)
-                "${config.home.homeDirectory}/.gemini"
-                "${config.home.homeDirectory}/.config/gh"
                 "${config.home.homeDirectory}/.nb"
               ];
+              BindReadOnlyPaths = [
+                "${config.home.homeDirectory}/.gemini"
+                "${config.home.homeDirectory}/.config/gh"
+              ]
+              ++ lib.optional agent.useDBus "/run/user/%U/bus";
               ExecStart = "${pkgs.writeShellScript "jbot-launcher-${name}" ''
                 set -euo pipefail
 
@@ -363,6 +372,7 @@ in
                 export CLI_MODEL="${agent.model or "gemini-1.5-pro"}"
                 export AGENTS_JSON="${agentsJson}"
                 export JBOT_CLI_BIN="${jbot-cli}/bin/jbot"
+                ${lib.optionalString agent.useDBus "export USE_DBUS=1"}
 
                 # Environment paths
                 export HM_PROFILE="${config.home.homeDirectory}/.nix-profile"

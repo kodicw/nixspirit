@@ -1,0 +1,21 @@
+graph TD
+    CLI[jbot_cli.py] --> INIT[init: jbot_init]
+    CLI --> STATUS[status: infra.get_project_summary]
+    CLI --> TASK[task: jbot_tasks]
+    CLI --> LOGS[logs: infra.get_recent_logs]
+    CLI --> MSG[messages: infra.get_recent_messages]
+    CLI --> SEND[send-message: infra.send_message]
+    CLI --> MAINT[maintenance: infra.run_maintenance]
+    CLI --> PURGE[purge: jbot_rotation.purge_directives]
+    CLI --> ROTATE[rotate: jbot_rotation]
+    CLI --> DASH[dashboard: utils.generate_dashboard]
+    CLI --> AGENT[agent: jbot_agent.run_agent]
+    CLI --> HUMAN[human: jbot_tui]
+    CLI --> SYSTEM[system: handle_system]
+    CLI --> VERSION[version: handle_version]
+
+    subgraph "Internal Logic"
+        STATUS --> core[jbot_core]
+        VERSION --> core
+        SYSTEM --> jbot_agent
+    end

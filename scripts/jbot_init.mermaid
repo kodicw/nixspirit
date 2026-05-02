@@ -1,0 +1,22 @@
+graph TD
+    INIT[init_project] --> INFRA[infra.initialize_infrastructure]
+    INIT --> GIT[core.init_git]
+    INIT --> BRANCH[core.switch_to_develop]
+    INIT --> NB_DIR[Create .nb/]
+    INIT --> NB_ADD[nb notebooks add]
+    INIT --> CFG[Write .jbot/notebook]
+    INIT --> GOAL[Write .project_goal]
+    INIT --> AGENTS[Write .jbot/agents.json]
+    INIT --> VER[Write VERSION & CHANGELOG.md]
+    INIT --> IGNORE[Write .gitignore]
+    INIT --> FLAKE[Write flake.nix template]
+    INIT --> PROMPT[Write jbot_prompt.txt template]
+    INIT --> PUSH[Push Initial Notes to nb]
+    INIT --> DASH[utils.generate_dashboard]
+    INIT --> COMMIT[core.commit_all]
+
+    subgraph "Knowledge Base (nb)"
+        PUSH --> GOAL_NOTE[Vision: Goal Note]
+        PUSH --> TEAM_NOTE[Team Registry Note]
+        PUSH --> TASK_NOTE[Initial Task Note]
+    end

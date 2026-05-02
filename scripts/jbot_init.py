@@ -1,3 +1,4 @@
+# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-57]], [[nb:jbot:adr-210]]
 import os
 import subprocess
 from typing import List, Dict
@@ -11,7 +12,7 @@ def init_project(project_dir: str, name: str = None) -> bool:
     """
     Initializes a new JBot organization project.
 
-    Context: [[nb:jbot:adr-152]], [[nb:jbot:115]]
+    Context: [[nb:jbot:6]]
     """
     try:
         if not name:

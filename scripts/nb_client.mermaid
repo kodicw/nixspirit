@@ -1,0 +1,28 @@
+graph TD
+    NbClient[NbClient] --> ResolvePath[_resolve_notebook_path]
+    NbClient --> LoadCache[_load_persistent_cache]
+
+    NbClient --> Add[add: nb add]
+    NbClient --> Show[show: Hybrid Retrieval]
+    NbClient --> Batch[show_batch: Parallel Retrieval]
+    NbClient --> Search[search/ls: nb search/ls]
+    NbClient --> Edit[edit: nb edit]
+    NbClient --> Delete[delete: nb delete]
+
+    subgraph "Hybrid Retrieval (show)"
+        Show --> CacheCheck{In-memory Cache?}
+        CacheCheck -- No --> FSRead{Direct FS Read?}
+        FSRead -- No --> NBShow[nb show --print]
+        CacheCheck -- Yes --> Return[Return Content]
+        FSRead -- Yes --> Return
+        NBShow --> Return
+    end
+
+    subgraph "Caching Mechanism"
+        LoadCache --> FileCache[.jbot/nb_cache.json]
+        FileCache --> IDMap[ID-to-Filename Mapping]
+        FileCache --> ContentMap[Partial Content Cache]
+    end
+
+    Batch --> ThreadPool[ThreadPoolExecutor]
+    ThreadPool --> Show

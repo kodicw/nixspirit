@@ -1,3 +1,4 @@
+# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-193]], [[nb:jbot:adr-100]], [[nb:jbot:adr-105]]
 import os
 import re
 import glob
@@ -6,8 +7,6 @@ from typing import List, Dict, Optional
 
 import jbot_core as core
 from jbot_memory_interface import get_memory_client
-
-# Context: [[nb:jbot:adr-210]], [[nb:jbot:adr-193]]
 
 
 def update_note_stably(title: str, content: str, tags: List[str]) -> bool:
@@ -91,7 +90,7 @@ def is_directive_expired(content: str, filename: Optional[str] = None) -> bool:
 def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") -> bool:
     """Generates a markdown dashboard summarizing the project status.
 
-    Context: [[nb:jbot:adr-193]], [[nb:jbot:adr-200]], [[nb:jbot:adr-205]]
+    Context: [[nb:jbot:adr-193]], [[nb:jbot:adr-100]], [[nb:jbot:adr-105]]
     """
     import jbot_infra as infra
 
@@ -179,13 +178,17 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
     if summary["recent_messages"]:
         for m in reversed(summary["recent_messages"]):
             headers = infra.parse_message_headers(m["content"])
+            reply_str = ""
+            if "in_reply_to" in headers:
+                reply_str = f" (Re: [[nb:{headers['in_reply_to']}]])"
+
             if m["filename"].startswith("nb:"):
                 # Link to nb note
                 note_id = m["filename"].replace("nb:", "")
-                dashboard_content += f"- **[{headers['from']}]** {headers['subject']} ([[nb:{note_id}]])\n"
+                dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([[nb:{note_id}]])\n"
             else:
                 # Legacy file link
-                dashboard_content += f"- **[{headers['from']}]** {headers['subject']} ([{m['filename']}](.jbot/messages/{m['filename']}))\n"
+                dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([{m['filename']}](.jbot/messages/{m['filename']}))\n"
         dashboard_content += "\n"
     else:
         dashboard_content += "No recent messages.\n\n"

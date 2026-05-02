@@ -1,0 +1,22 @@
+graph TD
+    START[main] --> CHOICE{Select Action}
+    CHOICE --> IDEA[💡 New Idea]
+    CHOICE --> FEED[💬 Feedback]
+    CHOICE --> PROMPT[🔧 Update Prompt]
+    CHOICE --> EXIT[❌ Exit]
+
+    IDEA --> DRAFT[Draft content via gum write]
+    FEED --> DRAFT
+    PROMPT --> DRAFT
+
+    DRAFT --> REFINE[AI Refinement via Gemini]
+    REFINE --> CONFIRM{Confirm Refinement}
+
+    CONFIRM --> ACCEPT[✅ Accept & Push]
+    CONFIRM --> EDIT[✏️ Edit Manually]
+    CONFIRM --> RETRY[🔄 Retry AI]
+    CONFIRM --> DISCARD[❌ Discard]
+
+    ACCEPT --> PUSH[Push to nb knowledge base]
+    EDIT --> DRAFT
+    RETRY --> REFINE

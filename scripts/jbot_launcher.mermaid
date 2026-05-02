@@ -1,0 +1,16 @@
+graph TD
+    Start[Start Launcher] --> EnvCheck[Check Environment Variables]
+    EnvCheck --> GitCheck[Ensure Develop Branch]
+    GitCheck --> PrepDirs[Prepare .jbot/ Queues & Outbox]
+    PrepDirs --> PrepRegistry[Copy Agent Registry]
+    PrepRegistry --> FakePasswd[Create Fake /etc/passwd]
+    FakePasswd --> Sandbox[Execute Bubblewrap Sandbox]
+    
+    subgraph "Sandbox (bwrap)"
+        Sandbox --> Mounts[Mount /nix/store, /etc, /dev, /proc]
+        Mounts --> Binds[Bind Project Dir & Memory]
+        Binds --> Unshare[Unshare All Namespaces]
+        Unshare --> Execute[Run jbot-cli agent]
+    end
+    
+    Execute --> End[End Launcher]
