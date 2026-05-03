@@ -16,22 +16,26 @@ rec {
   memoryLog = "${stateDir}/memory.log";
 
   # --- Sandboxing Defaults ---
+  # Softer sandbox for better compatibility with Crostini/restricted environments.
+  # bubblewrap within the launcher provides the primary filesystem isolation.
   commonSandbox = {
     ProtectSystem = "strict";
     ProtectHome = "read-only";
     PrivateTmp = true;
-    PrivateDevices = true;
-    ProtectControlGroups = true;
-    ProtectKernelTunables = true;
-    ProtectKernelModules = true;
+    # Some options are disabled to avoid CAPABILITIES errors in unprivileged containers.
+    # PrivateDevices = true;
+    # ProtectControlGroups = true;
+    # ProtectKernelTunables = true;
+    # ProtectKernelModules = true;
+    # LockPersonality = true;
+    # RestrictRealtime = true;
+    
     RestrictAddressFamilies = [
       "AF_UNIX"
       "AF_INET"
       "AF_INET6"
     ];
-    RestrictRealtime = true;
     RestrictNamespaces = false; # Needed for bubblewrap
-    LockPersonality = true;
   };
 
   # --- Resource Limits ---
