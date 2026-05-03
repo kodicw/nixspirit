@@ -250,16 +250,17 @@ in
               After = map (n: "${constants.servicePrefix}${n}.service") (agent.dependsOn or [ ]);
               Wants = map (n: "${constants.servicePrefix}${n}.service") (agent.dependsOn or [ ]);
             };
-            path =
-              corePackages
-              ++ [
-                pkgs.bubblewrap
-                pkgs.coreutils
-                agent.geminiPackage
-                agent.opencodePackage
-              ]
-              ++ agent.extraPackages;
             environment = {
+              PATH = binPath (
+                corePackages
+                ++ [
+                  pkgs.bubblewrap
+                  pkgs.coreutils
+                  agent.geminiPackage
+                  agent.opencodePackage
+                ]
+                ++ agent.extraPackages
+              );
               AGENT_NAME = name;
               AGENT_ROLE = agent.role;
               AGENT_DESCRIPTION = agent.description;
@@ -317,19 +318,19 @@ in
           Unit = {
             Description = "Autonomous Infrastructure Maintenance Service";
           };
-          path = [
-            pkgs.coreutils
-            pkgs.bash
-            pkgs.git
-            pkgs.python3
-            pkgs.findutils
-            pkgs.gnused
-            pkgs.gnugrep
-            pkgs.gawk
-            pkgs.which
-            core-cli
-          ];
           environment = {
+            PATH = binPath [
+              pkgs.coreutils
+              pkgs.bash
+              pkgs.git
+              pkgs.python3
+              pkgs.findutils
+              pkgs.gnused
+              pkgs.gnugrep
+              pkgs.gawk
+              pkgs.which
+              core-cli
+            ];
             PROJECT_DIR = maintenanceProjectDir;
             DISCOVERY_ROOT = if cfg.discoveryRoot != null then toString cfg.discoveryRoot else "";
           };
@@ -351,8 +352,8 @@ in
             Description = "Autonomous Knowledge Base HTTP Server (nb browse)";
             After = [ "network.target" ];
           };
-          path = corePackages;
           environment = {
+            PATH = binPath corePackages;
             NB_DIR = "${config.home.homeDirectory}/.nb";
             HOME = "${config.home.homeDirectory}";
           };
