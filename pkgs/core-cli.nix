@@ -21,6 +21,7 @@ pkgs.stdenv.mkDerivation {
   installPhase = ''
     mkdir -p $out/bin
     cp -r . $out/scripts
+    chmod +x $out/scripts/*.sh
     makeWrapper ${corePython}/bin/python3 $out/bin/core-cli \
       --add-flags "$out/scripts/core_cli.py" \
       --set PYTHONPATH "$out/scripts"
