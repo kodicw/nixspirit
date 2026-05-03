@@ -12,19 +12,19 @@ result
 *~
 .history/
 
-# JBot Knowledge Base (nb)
+# Knowledge Base (nb)
 .nb/
 
-# JBot Memory files
+# Memory files
 .memory.log
 .memory_queue.json
 .project_goal
 .test_prompt
-.jbot/*
-!.jbot/directives/
-!.jbot/messages/
-!.jbot/agents.json
-
+.system/*
+!.system/directives/
+!.system/messages/
+!.system/agents.json
+!.system/notebook
 
 __pycache__/
 .coverage
