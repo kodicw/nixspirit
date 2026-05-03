@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-57]]
+# Context: [[nb:spirit:adr-57]]
 import os
 import subprocess
 import re
@@ -6,9 +6,9 @@ import json
 import time
 from typing import List, Optional, Dict
 from concurrent.futures import ThreadPoolExecutor
-import jbot_core as core
+import spirit_core as core
 
-from jbot_memory_interface import MemoryInterface, MemoryNote
+from spirit_memory_interface import MemoryInterface, MemoryNote
 
 
 class NbClient(MemoryInterface):
@@ -24,7 +24,7 @@ class NbClient(MemoryInterface):
     _cache = {}
     _id_to_filename = {}
     _notebook_path_cache = {}
-    _persistent_cache_file = ".jbot/nb_cache.json"
+    _persistent_cache_file = ".spirit/nb_cache.json"
 
     @classmethod
     def clear_cache(cls):
@@ -52,7 +52,7 @@ class NbClient(MemoryInterface):
         import tempfile
 
         # Mock 'less' if missing
-        self._tmp_dir = tempfile.TemporaryDirectory(prefix="jbot_bin_")
+        self._tmp_dir = tempfile.TemporaryDirectory(prefix="spirit_bin_")
         tmp_bin = self._tmp_dir.name
         less_path = os.path.join(tmp_bin, "less")
         if not os.path.exists(less_path):

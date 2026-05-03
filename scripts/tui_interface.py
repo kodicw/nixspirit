@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-57]]
+# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-57]]
 import os
 import sys
 
@@ -7,9 +7,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import subprocess
-import jbot_core as core
-import jbot_infra as infra
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+import spirit_infra as infra
+from spirit_memory_interface import get_memory_client
 
 
 def run_command(cmd, capture=True):
@@ -53,8 +53,8 @@ def ai_refine_idea(rough_draft, project_dir):
     )
 
     prompt_template = """
-You are assisting a human developer in refining an idea or feedback for the JBot project.
-JBot is a PAO (Professional Autonomous Organization) managed by AI agents.
+You are assisting a human developer in refining an idea or feedback for the spirit project.
+spirit is a PAO (Professional Autonomous Organization) managed by AI agents.
 
 **PROJECT CONTEXT:**
 Git Status: {{ git_status }}

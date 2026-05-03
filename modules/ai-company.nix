@@ -1,10 +1,10 @@
 _: {
-  programs.jbot = {
+  programs.spirit = {
     enable = true;
-    projectDir = "/home/kodicw/code/jbot";
+    projectDir = "/home/kodicw/code/spirit";
 
     agents = {
-      # --- JBot Hierarchical Specialist Organization ---
+      # --- spirit Hierarchical Specialist Organization ---
 
       lead = {
         enable = true;

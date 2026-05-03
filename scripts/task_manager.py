@@ -1,9 +1,9 @@
-# Context: [[nb:jbot:adr-57]], [[nb:jbot:adr-2]], [[nb:jbot:adr-62]], [[nb:jbot:adr-66]]
+# Context: [[nb:spirit:adr-57]], [[nb:spirit:adr-2]], [[nb:spirit:adr-62]], [[nb:spirit:adr-66]]
 import re
 from typing import Dict, Any, Optional, List
 
-import jbot_core as core
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+from spirit_memory_interface import get_memory_client
 
 
 def _get_granular_tasks() -> List[Dict[str, Any]]:
@@ -55,10 +55,10 @@ def _get_granular_tasks() -> List[Dict[str, Any]]:
 def parse_tasks() -> Dict[str, Any]:
     """Parses granular tasks from nb.
 
-    Context: [[nb:jbot:57]] - Per-Task Note Model
+    Context: [[nb:spirit:57]] - Per-Task Note Model
     """
     # 1. Fetch Strategic Vision
-    import jbot_infra as infra
+    import spirit_infra as infra
 
     vision = infra.get_vision()
 
@@ -101,7 +101,7 @@ def parse_tasks() -> Dict[str, Any]:
 
     # 3. Fallback to old Authoritative Task Board if granular tasks are empty
     if not tasks_list:
-        import jbot_infra as infra
+        import spirit_infra as infra
 
         old_tasks = infra.get_note_content("type:tasks")
         if old_tasks:
@@ -238,7 +238,7 @@ def complete_task(task_text_search: str) -> bool:
 def get_task_board_markdown() -> str:
     """Returns the aggregated task board as a markdown string.
 
-    Context: [[nb:jbot:adr-2]]
+    Context: [[nb:spirit:adr-2]]
     """
     data = parse_tasks()
     output = []

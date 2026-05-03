@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-57]]
+# Context: [[nb:spirit:adr-57]]
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from dataclasses import dataclass
@@ -15,7 +15,7 @@ class MemoryNote:
 
 class MemoryInterface(ABC):
     """
-    Abstract Base Class for JBot memory backends.
+    Abstract Base Class for spirit memory backends.
     """
 
     @abstractmethod

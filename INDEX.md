@@ -1,4 +1,4 @@
-# JBot Dashboard
+# spirit Dashboard
 
 *Last Updated: 2026-05-03 01:56:38*
 
@@ -16,7 +16,7 @@ No ADRs found.
 No recent messages.
 
 ## 📊 Architectural Diagrams
-### Jbot Agent
+### spirit Agent
 ```mermaid
 graph TD
     A[Start Agent] --> B[Initialize Environment]
@@ -46,7 +46,7 @@ graph TD
     end
 ```
 
-### Jbot Agent Interface
+### spirit Agent Interface
 ```mermaid
 classDiagram
     class AiInterface {
@@ -71,32 +71,32 @@ classDiagram
     Factory ..> AiInterface : creates
 ```
 
-### Jbot Cli
+### spirit Cli
 ```mermaid
 graph TD
-    CLI[jbot_cli.py] --> INIT[init: jbot_init]
+    CLI[spirit_cli.py] --> INIT[init: spirit_init]
     CLI --> STATUS[status: infra.get_project_summary]
-    CLI --> TASK[task: jbot_tasks]
+    CLI --> TASK[task: spirit_tasks]
     CLI --> LOGS[logs: infra.get_recent_logs]
     CLI --> MSG[messages: infra.get_recent_messages]
     CLI --> SEND[send-message: infra.send_message]
     CLI --> MAINT[maintenance: infra.run_maintenance]
-    CLI --> PURGE[purge: jbot_rotation.purge_directives]
-    CLI --> ROTATE[rotate: jbot_rotation]
+    CLI --> PURGE[purge: spirit_rotation.purge_directives]
+    CLI --> ROTATE[rotate: spirit_rotation]
     CLI --> DASH[dashboard: utils.generate_dashboard]
-    CLI --> AGENT[agent: jbot_agent.run_agent]
-    CLI --> HUMAN[human: jbot_tui]
+    CLI --> AGENT[agent: spirit_agent.run_agent]
+    CLI --> HUMAN[human: spirit_tui]
     CLI --> SYSTEM[system: handle_system]
     CLI --> VERSION[version: handle_version]
 
     subgraph "Internal Logic"
-        STATUS --> core[jbot_core]
+        STATUS --> core[spirit_core]
         VERSION --> core
-        SYSTEM --> jbot_agent
+        SYSTEM --> spirit_agent
     end
 ```
 
-### Jbot Core
+### spirit Core
 ```mermaid
 graph TD
     subgraph Logging
@@ -147,7 +147,7 @@ graph TD
     UC --> WF
 ```
 
-### Jbot Infra
+### spirit Infra
 ```mermaid
 graph TD
     A[Start Maintenance] --> B[Initialize Infrastructure]
@@ -158,10 +158,10 @@ graph TD
     F --> G[End Maintenance]
 
     subgraph Initialize
-        B1[Create .jbot/queues]
-        B2[Create .jbot/messages]
-        B3[Create .jbot/directives]
-        B4[Create .jbot/outbox]
+        B1[Create .spirit/queues]
+        B2[Create .spirit/messages]
+        B3[Create .spirit/directives]
+        B4[Create .spirit/outbox]
     end
 
     subgraph Consolidate
@@ -177,7 +177,7 @@ graph TD
     end
 ```
 
-### Jbot Infra Updates
+### spirit Infra Updates
 ```mermaid
 graph TD
     START[generate_infra_pr] --> CLEAN{Git Clean?}
@@ -192,7 +192,7 @@ graph TD
     NOTIFY --> BACK[git checkout -]
 ```
 
-### Jbot Init
+### spirit Init
 ```mermaid
 graph TD
     INIT[init_project] --> INFRA[infra.initialize_infrastructure]
@@ -200,13 +200,13 @@ graph TD
     INIT --> BRANCH[core.switch_to_develop]
     INIT --> NB_DIR[Create .nb/]
     INIT --> NB_ADD[nb notebooks add]
-    INIT --> CFG[Write .jbot/notebook]
+    INIT --> CFG[Write .spirit/notebook]
     INIT --> GOAL[Write .project_goal]
-    INIT --> AGENTS[Write .jbot/agents.json]
+    INIT --> AGENTS[Write .spirit/agents.json]
     INIT --> VER[Write VERSION & CHANGELOG.md]
     INIT --> IGNORE[Write .gitignore]
     INIT --> FLAKE[Write flake.nix template]
-    INIT --> PROMPT[Write jbot_prompt.txt template]
+    INIT --> PROMPT[Write spirit_prompt.txt template]
     INIT --> PUSH[Push Initial Notes to nb]
     INIT --> DASH[utils.generate_dashboard]
     INIT --> COMMIT[core.commit_all]
@@ -218,12 +218,12 @@ graph TD
     end
 ```
 
-### Jbot Launcher
+### spirit Launcher
 ```mermaid
 graph TD
     Start[Start Launcher] --> EnvCheck[Check Environment Variables]
     EnvCheck --> GitCheck[Ensure Develop Branch]
-    GitCheck --> PrepDirs[Prepare .jbot/ Queues & Outbox]
+    GitCheck --> PrepDirs[Prepare .spirit/ Queues & Outbox]
     PrepDirs --> PrepRegistry[Copy Agent Registry]
     PrepRegistry --> FakePasswd[Create Fake /etc/passwd]
     FakePasswd --> Sandbox[Execute Bubblewrap Sandbox]
@@ -232,13 +232,13 @@ graph TD
         Sandbox --> Mounts[Mount /nix/store, /etc, /dev, /proc]
         Mounts --> Binds[Bind Project Dir & Memory]
         Binds --> Unshare[Unshare All Namespaces]
-        Unshare --> Execute[Run jbot-cli agent]
+        Unshare --> Execute[Run spirit-cli agent]
     end
     
     Execute --> End[End Launcher]
 ```
 
-### Jbot Memory Interface
+### spirit Memory Interface
 ```mermaid
 classDiagram
     class MemoryNote {
@@ -266,7 +266,7 @@ classDiagram
     MemoryInterface ..> MemoryNote : uses
 ```
 
-### Jbot Rotation
+### spirit Rotation
 ```mermaid
 graph TD
     A[Start Rotation Loop] --> B[Purge Directives]
@@ -282,7 +282,7 @@ graph TD
     end
 
     subgraph "Rotate Messages"
-        C1[List .jbot/messages]
+        C1[List .spirit/messages]
         C2{Count > Limit?}
         C2 -->|Yes| C3[Move oldest to archive/]
     end
@@ -297,7 +297,7 @@ graph TD
     end
 ```
 
-### Jbot Tasks
+### spirit Tasks
 ```mermaid
 graph TD
     A[Task Operation] --> B{Fetch Task Data}
@@ -326,7 +326,7 @@ graph TD
     end
 ```
 
-### Jbot Tui
+### spirit Tui
 ```mermaid
 graph TD
     START[main] --> CHOICE{Select Action}
@@ -352,10 +352,10 @@ graph TD
     RETRY --> REFINE
 ```
 
-### Jbot Utils
+### spirit Utils
 ```mermaid
 graph TD
-    UTILS[jbot_utils.py] --> UNS[update_note_stably]
+    UTILS[spirit_utils.py] --> UNS[update_note_stably]
     UTILS --> ADR[get_recent_adrs]
     UTILS --> EXP[Expiration Logic]
     UTILS --> DASH[generate_dashboard]
@@ -367,13 +367,13 @@ graph TD
     end
 
     subgraph "Dashboard Generation"
-        DASH --> infra[jbot_infra: get_project_summary]
+        DASH --> infra[spirit_infra: get_project_summary]
         DASH --> MER[Embed Mermaid Diagrams]
         DASH --> TASK[Format Task Board]
         DASH --> MSG[Format Messages]
     end
 
-    UNS --> mem[jbot_memory_interface]
+    UNS --> mem[spirit_memory_interface]
     ADR --> mem
 ```
 
@@ -400,7 +400,7 @@ graph TD
     end
 
     subgraph "Caching Mechanism"
-        LoadCache --> FileCache[.jbot/nb_cache.json]
+        LoadCache --> FileCache[.spirit/nb_cache.json]
         FileCache --> IDMap[ID-to-Filename Mapping]
         FileCache --> ContentMap[Partial Content Cache]
     end

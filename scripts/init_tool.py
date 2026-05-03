@@ -1,24 +1,24 @@
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-57]], [[nb:jbot:adr-63]]
+# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-57]], [[nb:spirit:adr-63]]
 import os
 import subprocess
 from typing import List, Dict
-import jbot_core as core
-import jbot_infra as infra
-import jbot_utils as utils
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+import spirit_infra as infra
+import spirit_utils as utils
+from spirit_memory_interface import get_memory_client
 
 
 def init_project(project_dir: str, name: str = None) -> bool:
     """
-    Initializes a new JBot organization project.
+    Initializes a new spirit organization project.
 
-    Context: [[nb:jbot:6]]
+    Context: [[nb:spirit:6]]
     """
     try:
         if not name:
             name = os.path.basename(os.path.abspath(project_dir))
 
-        core.log(f"Initializing JBot organization: {name} in {project_dir}", "Init")
+        core.log(f"Initializing spirit organization: {name} in {project_dir}", "Init")
 
         # 1. Create Infrastructure Directories
         infra.initialize_infrastructure(project_dir)
@@ -46,8 +46,8 @@ def init_project(project_dir: str, name: str = None) -> bool:
         except Exception as e:
             core.log(f"Warning: Failed to register nb notebook: {e}", "Init")
 
-        # 3. Create .jbot/notebook local config
-        core.write_file(os.path.join(project_dir, ".jbot/notebook"), name)
+        # 3. Create .spirit/notebook local config
+        core.write_file(os.path.join(project_dir, ".spirit/notebook"), name)
 
         # 4. Create .project_goal
         goal_path = os.path.join(project_dir, ".project_goal")
@@ -55,8 +55,8 @@ def init_project(project_dir: str, name: str = None) -> bool:
             default_goal = f"Define strategic vision for {name.title()} here."
             core.write_file(goal_path, default_goal)
 
-        # 5. Create .jbot/agents.json
-        agents_path = os.path.join(project_dir, ".jbot/agents.json")
+        # 5. Create .spirit/agents.json
+        agents_path = os.path.join(project_dir, ".spirit/agents.json")
         if not os.path.exists(agents_path):
             default_agents = {
                 "ceo": {
@@ -77,7 +77,7 @@ def init_project(project_dir: str, name: str = None) -> bool:
 
         changelog_path = os.path.join(project_dir, "CHANGELOG.md")
         if not os.path.exists(changelog_path):
-            default_changelog = f"# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n## [Unreleased]\n\n### Added\n- Initialized JBot organization '{name}'.\n"
+            default_changelog = f"# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n## [Unreleased]\n\n### Added\n- Initialized spirit organization '{name}'.\n"
             core.write_file(changelog_path, default_changelog)
 
         # 6.5 Create .gitignore
@@ -97,18 +97,18 @@ result
 *~
 .history/
 
-# JBot Knowledge Base (nb)
+# spirit Knowledge Base (nb)
 .nb/
 
-# JBot Memory files
+# spirit Memory files
 .memory.log
 .memory_queue.json
 .project_goal
 .test_prompt
-.jbot/*
-!.jbot/directives/
-!.jbot/messages/
-!.jbot/agents.json
+.spirit/*
+!.spirit/directives/
+!.spirit/messages/
+!.spirit/agents.json
 
 __pycache__/
 .coverage
@@ -119,15 +119,15 @@ __pycache__/
         flake_path = os.path.join(project_dir, "flake.nix")
         if not os.path.exists(flake_path):
             flake_template = """{
-  description = "A new JBot AI organization";
+  description = "A new spirit AI organization";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    jbot.url = "github:kodicw/jbot"; # Point to the core jbot repository
+    spirit.url = "github:kodicw/spirit"; # Point to the core spirit repository
   };
 
-  outputs = { self, nixpkgs, flake-utils, jbot, ... }:
+  outputs = { self, nixpkgs, flake-utils, spirit, ... }:
     flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
       let
         pkgs = import nixpkgs { inherit system; };
@@ -135,7 +135,7 @@ __pycache__/
       {
         devShells.default = pkgs.mkShell {
           packages = [
-            jbot.packages.${system}.default
+            spirit.packages.${system}.default
             pkgs.nb
             pkgs.git
             pkgs.gum
@@ -148,8 +148,8 @@ __pycache__/
 """
             core.write_file(flake_path, flake_template)
 
-        # 7.5 Create jbot_prompt.txt template
-        prompt_path = os.path.join(project_dir, "jbot_prompt.txt")
+        # 7.5 Create spirit_prompt.txt template
+        prompt_path = os.path.join(project_dir, "spirit_prompt.txt")
         if not os.path.exists(prompt_path):
             prompt_template = """You are {{ agent.name }}, acting as {{ agent.role }}, an autonomous developer agent operating in a headless NixOS environment. Your execution scope is locked to your current working directory.
 
@@ -164,7 +164,7 @@ __pycache__/
 **Environment Context:**
 * **OS:** NixOS (running in a VM/Crostini).
 * **Sandboxing & Isolation:** You are running inside a COW isolated workspace (SAEM) within a bubblewrap sandbox. Use `nb` for persistent memory.
-* **Declarative Config:** Your infrastructure is managed via `jbot.nix`.
+* **Declarative Config:** Your infrastructure is managed via `spirit.nix`.
 * **Resource Control:** You are strictly capped by systemd Cgroups.
 
 **Available Knowledge Repositories (notebooks):**
@@ -184,11 +184,11 @@ __pycache__/
 {% endfor %}
 
 **Multi-Agent Coordination:**
-Coordinate via `nb` and TNPP protocol. Use `nb jbot:add` for ADRs and reflections.
+Coordinate via `nb` and TNPP protocol. Use `nb spirit:add` for ADRs and reflections.
 
 **Operational Directives:**
 * **Information Density:** Treat documentation as executable metadata and architectural law.
-    1. **ADR Links:** Code implementing an ADR must reference it in a header comment (e.g., `# Context: [[nb:jbot:adr-001]]`).
+    1. **ADR Links:** Code implementing an ADR must reference it in a header comment (e.g., `# Context: [[nb:spirit:adr-001]]`).
     2. **Visual Density (Mermaid):** Every complex script must have an accompanying .mermaid file or Mermaid block describing its logic.
     3. **Type-Driven Docs:** 100% usage of Python Type Hints and Nix Lib types. Every function must have a Purpose/Inputs/Outputs docstring.
     4. **Structure as Code:** Define and adhere to JSON Schemas for all state files to prevent hallucinated fields.
@@ -197,10 +197,10 @@ Coordinate via `nb` and TNPP protocol. Use `nb jbot:add` for ADRs and reflection
     1. **Mandatory Audit:** Your final action before reflection MUST be `just audit` to ensure technical purity.
     2. **Dead Code Pruning:** Use `just prune` (powered by `deadnix`) to automatically remove unused Nix definitions and technical debt.
     3. **Command Discovery:** Use `tldr <command>` for quick technical discovery and high-density usage examples.
-* **Organizational Memory (nb):** Use the `nb` CLI tool to manage long-term technical memory in the `jbot` notebook. 
-    1. **Search First:** Your FIRST ACTION in any run must be to search for existing context using `nb jbot:q <keywords>`.
-    2. **Environment Awareness:** Reference `nb jbot:show "ADR: Environment and Tool Registry"` to verify available tools and sandbox constraints.
-    3. **ADR Mandate:** Any structural change to the codebase MUST be preceded by an Architectural Decision Record note (`nb jbot:add --title "ADR: <Topic>"`).
+* **Organizational Memory (nb):** Use the `nb` CLI tool to manage long-term technical memory in the `spirit` notebook. 
+    1. **Search First:** Your FIRST ACTION in any run must be to search for existing context using `nb spirit:q <keywords>`.
+    2. **Environment Awareness:** Reference `nb spirit:show "ADR: Environment and Tool Registry"` to verify available tools and sandbox constraints.
+    3. **ADR Mandate:** Any structural change to the codebase MUST be preceded by an Architectural Decision Record note (`nb spirit:add --title "ADR: <Topic>"`).
     4. **Reflection Export:** Upon reaching a milestone or significant technical discovery, export a summary to `nb` for permanent record.
 * **Branch Strategy:** Operate on the `develop` branch by default.
     1. **Isolation:** Never commit directly to `main` unless specifically instructed.
@@ -218,7 +218,7 @@ Begin execution.
         # 8. Push Initial Notes to Technical Memory (nb)
         try:
             env = os.environ.copy()
-            env["JBOT_NOTEBOOK"] = name
+            env["spirit_NOTEBOOK"] = name
             client = get_memory_client(env=env)
 
             # Push Goal (ADR 210 format)
@@ -254,7 +254,7 @@ Begin execution.
         # 10. Initial Commit
         core.commit_all(project_dir, "feat: initial organization bootstrap")
 
-        core.log(f"Successfully initialized JBot organization '{name}'.", "Init")
+        core.log(f"Successfully initialized spirit organization '{name}'.", "Init")
         return True
     except Exception as e:
         core.log(f"Initialization failed: {e}", "Init")
@@ -262,8 +262,8 @@ Begin execution.
 
 
 def _load_agents_config(project_dir: str) -> List[Dict[str, str]]:
-    """Loads agent configuration from .jbot/agents.json."""
-    agents_path = os.path.join(project_dir, ".jbot", "agents.json")
+    """Loads agent configuration from .spirit/agents.json."""
+    agents_path = os.path.join(project_dir, ".spirit", "agents.json")
     try:
         data = core.load_json(agents_path, default=[])
         if isinstance(data, list):

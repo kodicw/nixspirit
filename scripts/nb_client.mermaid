@@ -19,7 +19,7 @@ graph TD
     end
 
     subgraph "Caching Mechanism"
-        LoadCache --> FileCache[.jbot/nb_cache.json]
+        LoadCache --> FileCache[.spirit/nb_cache.json]
         FileCache --> IDMap[ID-to-Filename Mapping]
         FileCache --> ContentMap[Partial Content Cache]
     end

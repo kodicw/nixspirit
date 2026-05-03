@@ -1,16 +1,16 @@
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-63]], [[nb:jbot:adr-2]], [[nb:jbot:adr-61]], [[nb:jbot:adr-57]]
+# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-63]], [[nb:spirit:adr-2]], [[nb:spirit:adr-61]], [[nb:spirit:adr-57]]
 import os
 import re
 import sys
 import json
 import subprocess
 from datetime import datetime
-from typing import Any, Optional, Dict
+from typing import Any, Optional, List, Dict
 
 
 # --- Logging ---
-def log(msg: str, component: str = "JBot") -> None:
-    """Standardized logging format for all JBot scripts."""
+def log(msg: str, component: str = "spirit") -> None:
+    """Standardized logging format for all spirit scripts."""
     print(f"[{datetime.now()}] {component}: {msg}")
 
 
@@ -42,20 +42,20 @@ def get_notebook_name(
 ) -> str:
     """
     Determines the nb notebook name for the current project.
-    Precedence: env['JBOT_NOTEBOOK'] > .jbot/notebook file > basename of project_dir.
-    Default fallback: 'jbot'
+    Precedence: env['spirit_NOTEBOOK'] > .spirit/notebook file > basename of project_dir.
+    Default fallback: 'spirit'
     """
     # 1. Environment Variable
     if env is None:
         env = os.environ
 
-    env_notebook = env.get("JBOT_NOTEBOOK")
+    env_notebook = env.get("spirit_NOTEBOOK")
     if env_notebook:
         return env_notebook
 
     # 2. Local config file
     root = get_project_root(project_dir)
-    config_path = os.path.join(root, ".jbot/notebook")
+    config_path = os.path.join(root, ".spirit/notebook")
     if os.path.exists(config_path):
         content = read_file(config_path).strip()
         if content:
@@ -81,23 +81,23 @@ def check_config(project_dir: str) -> List[str]:
     if not os.path.exists(os.path.join(root, ".project_goal")):
         warnings.append(f"CRITICAL: .project_goal missing in {root}. Agents will lack vision.")
 
-    # 2. Check for .jbot/notebook
-    config_path = os.path.join(root, ".jbot/notebook")
+    # 2. Check for .spirit/notebook
+    config_path = os.path.join(root, ".spirit/notebook")
     if not os.path.exists(config_path):
-        warnings.append(f"WARNING: .jbot/notebook missing. Defaulting to '{get_notebook_name(project_dir)}'.")
+        warnings.append(f"WARNING: .spirit/notebook missing. Defaulting to '{get_notebook_name(project_dir)}'.")
     else:
         nb_name = read_file(config_path).strip()
         # Verify notebook exists in nb
         try:
             res = subprocess.run(["nb", "notebooks", "--names"], capture_output=True, text=True, env={**os.environ, "EDITOR": "cat"})
             if nb_name not in res.stdout.splitlines():
-                warnings.append(f"CRITICAL: Notebook '{nb_name}' defined in .jbot/notebook does not exist in 'nb'.")
+                warnings.append(f"CRITICAL: Notebook '{nb_name}' defined in .spirit/notebook does not exist in 'nb'.")
         except Exception:
             pass
 
     # 3. Check for agents.json
-    if not os.path.exists(os.path.join(root, ".jbot/agents.json")):
-        warnings.append("WARNING: .jbot/agents.json missing. No agents are registered for this project.")
+    if not os.path.exists(os.path.join(root, ".spirit/agents.json")):
+        warnings.append("WARNING: .spirit/agents.json missing. No agents are registered for this project.")
 
     return warnings
 
@@ -151,10 +151,10 @@ def write_file(file_path: str, content: str) -> bool:
 # --- Security & Isolation ---
 def ensure_single_user(project_dir: str) -> None:
     """
-    Enforces that JBot components remain under a single Linux user account.
+    Enforces that spirit components remain under a single Linux user account.
     Exits if the current user does not own the project directory.
 
-    Context: [[nb:jbot:adr-210]], [[nb:jbot:human]]
+    Context: [[nb:spirit:adr-210]], [[nb:spirit:human]]
     """
     try:
         project_stat = os.stat(project_dir)
@@ -166,7 +166,7 @@ def ensure_single_user(project_dir: str) -> None:
                 "Security",
             )
             log(
-                "JBot organizations must be isolated by Linux user accounts. Use separate users for different organizations.",
+                "spirit organizations must be isolated by Linux user accounts. Use separate users for different organizations.",
                 "Security",
             )
             sys.exit(1)
@@ -271,7 +271,7 @@ def commit_all(project_dir: str, message: str) -> bool:
         )
         if not res_name.stdout.strip():
             subprocess.run(
-                ["git", "-C", project_dir, "config", "user.name", "JBot System"],
+                ["git", "-C", project_dir, "config", "user.name", "spirit System"],
                 check=True,
             )
 
@@ -288,7 +288,7 @@ def commit_all(project_dir: str, message: str) -> bool:
                     project_dir,
                     "config",
                     "user.email",
-                    "system@internal.jbot",
+                    "system@internal.spirit",
                 ],
                 check=True,
             )
@@ -391,7 +391,7 @@ def update_changelog(project_dir: str, new_version: str) -> bool:
     with open(changelog_path, "r") as f:
         lines = f.readlines()
 
-    # Robust regex for section matching as per ADR [[nb:jbot:adr-193]]
+    # Robust regex for section matching as per ADR [[nb:spirit:adr-193]]
     re_unreleased = re.compile(r"^##.*unreleased", re.IGNORECASE)
     re_version_header = re.compile(r"^##\s*\[", re.IGNORECASE)
 

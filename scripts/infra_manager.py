@@ -1,20 +1,20 @@
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-62]], [[nb:jbot:adr-61]], [[nb:jbot:adr-63]], [[nb:jbot:adr-66]], [[nb:jbot:adr-57]], [[nb:jbot:adr-193]], [[nb:jbot:adr-210]]
+# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-6]], [[nb:spirit:adr-62]], [[nb:spirit:adr-61]], [[nb:spirit:adr-63]], [[nb:spirit:adr-66]], [[nb:spirit:adr-57]], [[nb:spirit:adr-193]], [[nb:spirit:adr-210]]
 import os
 import json
 import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-import jbot_core as core
-import jbot_tasks as tasks
-import jbot_rotation
-import jbot_utils as utils
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+import spirit_tasks as tasks
+import spirit_rotation
+import spirit_utils as utils
+from spirit_memory_interface import get_memory_client
 
 
 # --- Team & Registry ---
 def get_team_registry(project_dir: str = ".") -> Dict[str, Any]:
-    """Load the team registry from .jbot/agents.json."""
-    agents_path = os.path.join(project_dir, ".jbot/agents.json")
+    """Load the team registry from .spirit/agents.json."""
+    agents_path = os.path.join(project_dir, ".spirit/agents.json")
     return core.load_json(agents_path, default={})
 
 
@@ -26,8 +26,8 @@ def send_message(
     subject: str = "No Subject",
     in_reply_to: Optional[str] = None,
 ) -> bool:
-    """Sends a message by writing it to the .jbot/outbox directory."""
-    outbox_dir = os.path.join(project_dir, ".jbot", "outbox")
+    """Sends a message by writing it to the .spirit/outbox directory."""
+    outbox_dir = os.path.join(project_dir, ".spirit", "outbox")
     os.makedirs(outbox_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -194,7 +194,7 @@ def get_note_content(query: str, project_dir: str = ".") -> Optional[str]:
                     note_id = notes[0].id
 
         if not note_id:
-            # 1. Search for the ID using 'nb jbot:q' which is the most reliable search for text
+            # 1. Search for the ID using 'nb spirit:q' which is the most reliable search for text
             notes = client.query(query)
             if notes:
                 note_id = notes[0].id
@@ -270,7 +270,7 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
     Aggregates all relevant project status information into a single structure.
     Useful for both CLI status display and dashboard generation.
 
-    Context: [[nb:jbot:adr-62]]
+    Context: [[nb:spirit:adr-62]]
     """
     try:
         tasks_data = tasks.parse_tasks()
@@ -288,7 +288,7 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
             },
         }
 
-    msgs_dir = os.path.join(project_dir, ".jbot/messages")
+    msgs_dir = os.path.join(project_dir, ".spirit/messages")
 
     # Fetch ADRs
     adrs = utils.get_recent_adrs(5)
@@ -374,14 +374,14 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
 
 # --- Maintenance ---
 def initialize_infrastructure(project_dir: str) -> None:
-    """Ensures all required JBot infrastructure directories exist."""
+    """Ensures all required spirit infrastructure directories exist."""
     infra_dirs = [
-        ".jbot/queues",
-        ".jbot/messages",
-        ".jbot/directives",
-        ".jbot/outbox",
-        ".jbot/messages/archive",
-        ".jbot/directives/archive",
+        ".spirit/queues",
+        ".spirit/messages",
+        ".spirit/directives",
+        ".spirit/outbox",
+        ".spirit/messages/archive",
+        ".spirit/directives/archive",
     ]
     for d in infra_dirs:
         os.makedirs(os.path.join(project_dir, d), exist_ok=True)
@@ -389,7 +389,7 @@ def initialize_infrastructure(project_dir: str) -> None:
 
 def consolidate_messages(project_dir: str) -> None:
     """Consolidates messages from agent outboxes into the nb knowledge base."""
-    outbox_dir = os.path.join(project_dir, ".jbot/outbox")
+    outbox_dir = os.path.join(project_dir, ".spirit/outbox")
 
     if not os.path.exists(outbox_dir):
         return
@@ -397,9 +397,9 @@ def consolidate_messages(project_dir: str) -> None:
     # Ensure NB environment variables for identity are respected
     env = os.environ.copy()
     if "NB_USER_NAME" not in env:
-        env["NB_USER_NAME"] = "JBot System"
+        env["NB_USER_NAME"] = "spirit System"
     if "NB_USER_EMAIL" not in env:
-        env["NB_USER_EMAIL"] = "system@internal.jbot"
+        env["NB_USER_EMAIL"] = "system@internal.spirit"
 
     notebook = core.get_notebook_name(project_dir)
     client = get_memory_client(notebook=notebook, env=env)
@@ -436,7 +436,7 @@ def consolidate_messages(project_dir: str) -> None:
 
 def consolidate_memory(project_dir: str) -> None:
     """Aggregates agent memory queues into the nb knowledge base."""
-    queues_dir = os.path.join(project_dir, ".jbot/queues")
+    queues_dir = os.path.join(project_dir, ".spirit/queues")
 
     if not os.path.exists(queues_dir):
         return
@@ -444,9 +444,9 @@ def consolidate_memory(project_dir: str) -> None:
     # Ensure NB environment variables for identity are respected
     env = os.environ.copy()
     if "NB_USER_NAME" not in env:
-        env["NB_USER_NAME"] = "JBot System"
+        env["NB_USER_NAME"] = "spirit System"
     if "NB_USER_EMAIL" not in env:
-        env["NB_USER_EMAIL"] = "system@internal.jbot"
+        env["NB_USER_EMAIL"] = "system@internal.spirit"
 
     client = get_memory_client(env=env)
 
@@ -481,7 +481,7 @@ def run_maintenance(project_dir: str) -> bool:
         initialize_infrastructure(project_dir)
         consolidate_messages(project_dir)
         consolidate_memory(project_dir)
-        jbot_rotation.perform_rotations(project_dir)
+        spirit_rotation.perform_rotations(project_dir)
         utils.generate_dashboard(project_dir=project_dir)
         core.log("Maintenance complete.", "Maintenance")
         return True
@@ -491,7 +491,7 @@ def run_maintenance(project_dir: str) -> bool:
 
 
 def discover_projects(root_dir: str) -> List[str]:
-    """Scans a root directory for JBot projects (directories containing .jbot/agents.json)."""
+    """Scans a root directory for spirit projects (directories containing .spirit/agents.json)."""
     projects = []
     if not os.path.isdir(root_dir):
         return projects
@@ -499,6 +499,6 @@ def discover_projects(root_dir: str) -> List[str]:
     for item in os.listdir(root_dir):
         path = os.path.join(root_dir, item)
         if os.path.isdir(path):
-            if os.path.exists(os.path.join(path, ".jbot", "agents.json")):
+            if os.path.exists(os.path.join(path, ".spirit", "agents.json")):
                 projects.append(path)
     return projects

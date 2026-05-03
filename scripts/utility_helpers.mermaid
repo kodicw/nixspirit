@@ -1,5 +1,5 @@
 graph TD
-    UTILS[jbot_utils.py] --> UNS[update_note_stably]
+    UTILS[spirit_utils.py] --> UNS[update_note_stably]
     UTILS --> ADR[get_recent_adrs]
     UTILS --> EXP[Expiration Logic]
     UTILS --> DASH[generate_dashboard]
@@ -11,11 +11,11 @@ graph TD
     end
 
     subgraph "Dashboard Generation"
-        DASH --> infra[jbot_infra: get_project_summary]
+        DASH --> infra[spirit_infra: get_project_summary]
         DASH --> MER[Embed Mermaid Diagrams]
         DASH --> TASK[Format Task Board]
         DASH --> MSG[Format Messages]
     end
 
-    UNS --> mem[jbot_memory_interface]
+    UNS --> mem[spirit_memory_interface]
     ADR --> mem

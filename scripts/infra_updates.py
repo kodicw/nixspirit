@@ -1,9 +1,9 @@
-# Context: [[nb:jbot:adr-6]]
+# Context: [[nb:spirit:adr-6]]
 import os
 import subprocess
 from datetime import datetime
-import jbot_core as core
-import jbot_infra as infra
+import spirit_core as core
+import spirit_infra as infra
 
 
 def run_command(cmd, project_dir="."):

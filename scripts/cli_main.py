@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-63]], [[nb:jbot:adr-66]], [[nb:jbot:adr-57]], [[nb:jbot:adr-210]]
+# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-63]], [[nb:spirit:adr-66]], [[nb:spirit:adr-57]], [[nb:spirit:adr-210]]
 import os
 import sys
 
@@ -8,16 +8,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import argparse
 import subprocess
-import jbot_core as core
-import jbot_tasks as tasks
-import jbot_infra as infra
-import jbot_rotation
-import jbot_utils as utils
-import jbot_agent
-import jbot_tui
-import jbot_infra_updates
-import jbot_init
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+import spirit_tasks as tasks
+import spirit_infra as infra
+import spirit_rotation
+import spirit_utils as utils
+import spirit_agent
+import spirit_tui
+import spirit_infra_updates
+import spirit_init
+from spirit_memory_interface import get_memory_client
 
 
 def get_status(project_dir: str) -> None:
@@ -31,7 +31,7 @@ def get_status(project_dir: str) -> None:
 
     summary = infra.get_project_summary(project_dir)
 
-    print("\n--- JBot Organization Status ---")
+    print("\n--- spirit Organization Status ---")
 
     print(f"\n🎯 Strategic Vision:\n> {summary['vision']}")
 
@@ -62,7 +62,7 @@ def get_tasks(project_dir: str, show_all: bool = False) -> None:
     os.chdir(project_dir)
     tasks_data = tasks.parse_tasks()
 
-    print("\n--- JBot Task Board (nb) ---")
+    print("\n--- spirit Task Board (nb) ---")
     if not show_all:
         print("## Strategic Vision")
         print(tasks_data["vision"])
@@ -102,7 +102,7 @@ def get_logs(project_dir: str, count: int = 10) -> None:
 def get_messages(project_dir: str, count: int = 5) -> None:
     """Displays recent inter-agent messages."""
     os.chdir(project_dir)
-    msg_dir = ".jbot/messages"
+    msg_dir = ".spirit/messages"
     messages = infra.get_recent_messages(msg_dir, count)
 
     if not messages:
@@ -126,7 +126,7 @@ def handle_version(project_root: str, action: str, part: str = None) -> None:
     os.chdir(project_root)
     if action == "show":
         v = core.get_version(project_root)
-        print(f"Current JBot Version: v{v}")
+        print(f"Current spirit Version: v{v}")
     elif action == "bump":
         new_v = core.bump_version(project_root, part)
         if new_v:
@@ -180,7 +180,7 @@ def handle_version(project_root: str, action: str, part: str = None) -> None:
 
 
 def handle_system(project_root: str, action: str, agent_name: str = None) -> None:
-    """Handles viewing and editing the JBot system prompt."""
+    """Handles viewing and editing the spirit system prompt."""
     os.chdir(project_root)
 
     if action == "show":
@@ -198,9 +198,9 @@ def handle_system(project_root: str, action: str, agent_name: str = None) -> Non
             sys.exit(1)
 
         agent_info = registry.get(agent_name, {})
-        prompt_file = os.path.join(project_root, "jbot_prompt.txt")
+        prompt_file = os.path.join(project_root, "spirit_prompt.txt")
 
-        resolved_prompt = jbot_agent.assemble_context(
+        resolved_prompt = spirit_agent.assemble_context(
             agent_name=agent_name,
             agent_role=agent_info.get("role", "Unknown"),
             agent_desc=agent_info.get("description", "Unknown"),
@@ -220,12 +220,12 @@ def handle_system(project_root: str, action: str, agent_name: str = None) -> Non
             client.add("System Prompt", "Initialize prompt here.", tags=["type:prompt"])
 
         # Use interactive nb edit
-        subprocess.run(["nb", "jbot:edit", "type:prompt"])
+        subprocess.run(["nb", "spirit:edit", "type:prompt"])
 
 
 def main():
-    """JBot Centralized CLI Entry Point."""
-    parser = argparse.ArgumentParser(description="JBot Centralized CLI Tool")
+    """spirit Centralized CLI Entry Point."""
+    parser = argparse.ArgumentParser(description="spirit Centralized CLI Tool")
     parser.add_argument(
         "-d", "--dir", default=".", help="Project directory (default: .)"
     )
@@ -234,7 +234,7 @@ def main():
 
     # Init
     init_parser = subparsers.add_parser(
-        "init", help="Initialize a new JBot organization"
+        "init", help="Initialize a new spirit organization"
     )
     init_parser.add_argument(
         "name", nargs="?", help="Organization name (defaults to directory name)"
@@ -314,7 +314,7 @@ def main():
     subparsers.add_parser("dashboard", help="Regenerate dashboard")
 
     # Agent
-    agent_parser = subparsers.add_parser("agent", help="Run a JBot agent")
+    agent_parser = subparsers.add_parser("agent", help="Run a spirit agent")
     agent_parser.add_argument("--name")
     agent_parser.add_argument("--role")
     agent_parser.add_argument("--desc")
@@ -355,7 +355,7 @@ def main():
         core.ensure_single_user(project_root)
 
     if args.command == "init":
-        if jbot_init.init_project(args.dir, args.name):
+        if spirit_init.init_project(args.dir, args.name):
             print(f"Project initialized in {args.dir}")
         else:
             print("Failed to initialize project.")
@@ -401,7 +401,7 @@ def main():
                 print(f"Failed to push note: {args.title}")
                 sys.exit(1)
         elif args.m_action == "infra-update":
-            if jbot_infra_updates.generate_infra_pr(project_root):
+            if spirit_infra_updates.generate_infra_pr(project_root):
                 print("Infrastructure update process completed.")
             else:
                 print("Infrastructure update failed or no updates needed.")
@@ -426,24 +426,24 @@ def main():
             else:
                 infra.run_maintenance(project_root)
     elif args.command == "purge":
-        c = jbot_rotation.purge_directives(
-            os.path.join(project_root, ".jbot/directives"),
-            os.path.join(project_root, ".jbot/directives/archive"),
+        c = spirit_rotation.purge_directives(
+            os.path.join(project_root, ".spirit/directives"),
+            os.path.join(project_root, ".spirit/directives/archive"),
         )
         print(f"Purged {c} expired directives.")
     elif args.command == "rotate":
         if args.rotate_target == "messages":
-            if jbot_rotation.rotate_messages(
-                os.path.join(project_root, ".jbot/messages"),
-                os.path.join(project_root, ".jbot/messages/archive"),
+            if spirit_rotation.rotate_messages(
+                os.path.join(project_root, ".spirit/messages"),
+                os.path.join(project_root, ".spirit/messages/archive"),
                 args.limit,
             ):
                 print("Messages rotated.")
         elif args.rotate_target == "nb":
-            jbot_rotation.perform_rotations(project_root)
+            spirit_rotation.perform_rotations(project_root)
             print("NB notes rotated.")
         elif args.rotate_target == "all":
-            jbot_rotation.perform_rotations(project_root)
+            spirit_rotation.perform_rotations(project_root)
             print("Full data rotation performed.")
         else:
             rotate_parser.print_help()
@@ -461,7 +461,7 @@ def main():
                 for name, info in registry.items()
             ]
             options.append("❌ Cancel")
-            choice = jbot_tui.get_gum_choose(options, "Select an agent to run:")
+            choice = spirit_tui.get_gum_choose(options, "Select an agent to run:")
             if not choice or choice == "❌ Cancel":
                 return
             args.name = choice.split(" ")[0]
@@ -470,7 +470,7 @@ def main():
             args.role = getattr(args, "role", None) or agent_info.get("role")
             args.desc = getattr(args, "desc", None) or agent_info.get("description")
 
-        jbot_agent.run_agent(
+        spirit_agent.run_agent(
             name=args.name,
             role=getattr(args, "role", None),
             description=getattr(args, "desc", None),
@@ -481,7 +481,7 @@ def main():
             cli_model=getattr(args, "cli_model", None),
         )
     elif args.command == "human":
-        jbot_tui.main()
+        spirit_tui.main()
     elif args.command == "system":
         handle_system(project_root, args.sys_action, getattr(args, "agent", None))
     elif args.command == "version":

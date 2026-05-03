@@ -14,14 +14,14 @@ This repository contains strict architectural constraints and specialized toolin
   - `just prune`: Removes dead Nix code and cleans up pycache.
 
 ## 🧠 Memory & Context (`nb` CLI)
-- **Mandatory Memory Tool:** ALL long-term memory, context, and architectural decisions are stored using the `nb` CLI tool in the `jbot` notebook.
-- **Search First:** Before making structural changes or asking questions, search the knowledge base: `nb jbot:q "<keywords>"`.
-- **Record Decisions:** Record architectural changes or milestones using: `nb jbot:add --title "ADR: <Topic>"`.
+- **Mandatory Memory Tool:** ALL long-term memory, context, and architectural decisions are stored using the `nb` CLI tool in the `spirit` notebook.
+- **Search First:** Before making structural changes or asking questions, search the knowledge base: `nb spirit:q "<keywords>"`.
+- **Record Decisions:** Record architectural changes or milestones using: `nb spirit:add --title "ADR: <Topic>"`.
 
 ## 🏗️ Architecture & Constraints
 - **Strict Sandboxing:** Nix Spirit agents execute inside a `bubblewrap` sandbox with `ProtectSystem=strict` and `ProtectHome=read-only`. **Never attempt to loosen sandboxing** without a documented security rationale.
 - **No Local Resource Policing:** Agents must not implement local budget or token tracking logic. This is handled strictly by the backend API providers.
 
 ## ⚠️ Operational Gotchas
-- **API Quota Exhaustion:** The `jbot-agent-*` services share a Gemini API quota. If systemd services are failing with `exit-code 1`, check the logs (`journalctl --user -u jbot-agent-<name>`); it is likely a `429 Too Many Requests` error.
+- **API Quota Exhaustion:** The `spirit-agent-*` services share a Gemini API quota. If systemd services are failing with `exit-code 1`, check the logs (`journalctl --user -u spirit-agent-<name>`); it is likely a `429 Too Many Requests` error.
 - **Agent Looping:** Agents (especially the `tester`) will enter infinite loops (e.g., repeatedly logging "done" to `nb`) and burn through API quota if they lack explicit, actionable items. Ensure `TASKS.md` is populated with clear objectives. Target 90% minimum coverage.

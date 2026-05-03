@@ -21,11 +21,11 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        jbot-cli = pkgs.callPackage ./pkgs/jbot-cli.nix { scripts = ./scripts; };
+        spirit-cli = pkgs.callPackage ./pkgs/spirit-cli.nix { scripts = ./scripts; };
       in
       {
-        packages.default = jbot-cli;
-        packages.jbot-cli = jbot-cli;
+        packages.default = spirit-cli;
+        packages.spirit-cli = spirit-cli;
 
         devShells.default = pkgs.mkShell {
           packages = [
@@ -44,7 +44,7 @@
             pkgs.jq
             pkgs.gnugrep
             pkgs.which
-            jbot-cli
+            spirit-cli
           ];
 
           shellHook = ''
@@ -73,7 +73,7 @@
                   pkgs.gemini-cli
                   pkgs.nb
                   pkgs.bandit
-                  jbot-cli.python
+                  spirit-cli.python
                 ];
               }
               ''
@@ -112,9 +112,9 @@
     )
     // {
       homeManagerModules = {
-        jbot = import ./modules/jbot.nix;
+        spirit = import ./modules/spirit.nix;
         ai-company = import ./modules/ai-company.nix;
-        default = self.homeManagerModules.jbot;
+        default = self.homeManagerModules.spirit;
       };
     };
 }

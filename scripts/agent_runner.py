@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-63]], [[nb:jbot:adr-66]]
+# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-6]], [[nb:spirit:adr-63]], [[nb:spirit:adr-66]]
 import os
 import sys
 
@@ -8,10 +8,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import subprocess
 from typing import Optional
 
-import jbot_core as core
-import jbot_infra as infra
-import jbot_tasks as tasks
-import jbot_agent_interface as interface
+import spirit_core as core
+import spirit_infra as infra
+import spirit_tasks as tasks
+import spirit_agent_interface as interface
 
 
 def assemble_context(
@@ -99,7 +99,7 @@ def assemble_context(
     agents = infra.get_team_registry(project_dir)
 
     # 8. Inter-Agent Messaging
-    msgs_dir = os.path.join(project_dir, ".jbot/messages")
+    msgs_dir = os.path.join(project_dir, ".spirit/messages")
     recent_msgs = infra.get_recent_messages(msgs_dir, 5)
     messages = (
         "\n".join(
@@ -120,10 +120,10 @@ def assemble_context(
         notebooks = (
             nb_list_res.stdout.strip().splitlines()
             if nb_list_res.returncode == 0
-            else ["jbot"]
+            else ["spirit"]
         )
     except Exception:
-        notebooks = ["jbot"]
+        notebooks = ["spirit"]
 
     # Final Prompt Assembly using Jinja2
     from jinja2 import Template
@@ -168,7 +168,7 @@ def run_agent(
     cli_model: Optional[str] = None,
 ) -> None:
     """
-    Main execution logic for a JBot Agent.
+    Main execution logic for a spirit Agent.
     Operates directly on the project directory for stateful development within a sandbox.
     """
     # Fallback to environment variables if parameters not provided
@@ -214,7 +214,7 @@ def run_agent(
         if not os.path.exists(gitconfig_path):
             with open(gitconfig_path, "w") as f:
                 f.write(
-                    f"[user]\n  name = JBot ({name})\n  email = jbot-{name}@internal.jbot\n[core]\n  pager = cat\n"
+                    f"[user]\n  name = spirit ({name})\n  email = spirit-{name}@internal.spirit\n[core]\n  pager = cat\n"
                 )
 
         # Seed NB Config
@@ -222,20 +222,20 @@ def run_agent(
         if not os.path.exists(nbrc_path):
             with open(nbrc_path, "w") as f:
                 f.write(
-                    f'export NB_DIR="{home_dir}/.nb"\nexport NB_USER_NAME="JBot ({name})"\nexport NB_USER_EMAIL="jbot-{name}@internal.jbot"\n'
+                    f'export NB_DIR="{home_dir}/.nb"\nexport NB_USER_NAME="spirit ({name})"\nexport NB_USER_EMAIL="spirit-{name}@internal.spirit"\n'
                 )
 
         # Link Project Knowledge Base
         nb_home = os.path.join(home_dir, ".nb")
         os.makedirs(nb_home, exist_ok=True)
-        jbot_link = os.path.join(nb_home, "jbot")
-        if not os.path.exists(jbot_link):
-            os.symlink(os.path.join(project_dir, ".nb"), jbot_link)
+        spirit_link = os.path.join(nb_home, "spirit")
+        if not os.path.exists(spirit_link):
+            os.symlink(os.path.join(project_dir, ".nb"), spirit_link)
 
     # 1. Change to project directory
     os.chdir(project_dir)
-    queues_dir = ".jbot/queues"
-    outbox_dir = ".jbot/outbox"
+    queues_dir = ".spirit/queues"
+    outbox_dir = ".spirit/outbox"
     os.makedirs(queues_dir, exist_ok=True)
     os.makedirs(outbox_dir, exist_ok=True)
 

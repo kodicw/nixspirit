@@ -4,7 +4,7 @@
   scripts,
 }:
 let
-  jbotPython = pkgs.python3.withPackages (ps: [
+  spiritPython = pkgs.python3.withPackages (ps: [
     ps.jinja2
     ps.pytest
     ps.pytest-mock
@@ -12,26 +12,26 @@ let
   ]);
 in
 pkgs.stdenv.mkDerivation {
-  pname = "jbot-cli";
+  pname = "spirit-cli";
   version = "1.3.0";
   src = scripts;
   nativeBuildInputs = [ pkgs.makeWrapper ];
-  buildInputs = [ jbotPython ];
+  buildInputs = [ spiritPython ];
   dontBuild = true;
   installPhase = ''
     mkdir -p $out/bin
     cp -r . $out/scripts
-    makeWrapper ${jbotPython}/bin/python3 $out/bin/jbot \
-      --add-flags "$out/scripts/jbot_cli.py" \
+    makeWrapper ${spiritPython}/bin/python3 $out/bin/spirit \
+      --add-flags "$out/scripts/spirit_cli.py" \
       --set PYTHONPATH "$out/scripts"
   '';
 
   passthru = {
-    python = jbotPython;
+    python = spiritPython;
   };
 
   meta = with lib; {
-    description = "JBot Centralized CLI and Agent Runner";
+    description = "spirit Centralized CLI and Agent Runner";
     license = licenses.mit;
     platforms = platforms.unix;
   };

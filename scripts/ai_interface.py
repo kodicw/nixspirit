@@ -1,11 +1,11 @@
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-62]], [[nb:jbot:adr-66]]
+# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-62]], [[nb:spirit:adr-66]]
 import os
 import json
 import subprocess
 import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
-import jbot_core as core
+import spirit_core as core
 
 
 class AiInterface(ABC):
@@ -24,7 +24,7 @@ class AiInterface(ABC):
         """Executes the AI CLI and streams output with a mandatory 2s cooldown."""
         # 1. Enforce Global Rate Limit (2s between requests)
         project_root = os.getcwd()
-        lock_dir = os.path.join(project_root, ".jbot/locks")
+        lock_dir = os.path.join(project_root, ".spirit/locks")
         os.makedirs(lock_dir, exist_ok=True)
         lock_file = os.path.join(lock_dir, "api.lock")
 

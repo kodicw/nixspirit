@@ -10,7 +10,7 @@
 
 Nix Spirit follows a **Flat Organization** model. This means:
 - **Internal Cohesion:** All components (agents, infra, scripts) live under a single Linux user account.
-- **No Hierarchy:** We avoid nested project structures or "Sub-Organizations". Coordination happens via a shared `TASKS.md` and `.jbot/messages/`.
+- **No Hierarchy:** We avoid nested project structures or "Sub-Organizations". Coordination happens via a shared `TASKS.md` and `.spirit/messages/`.
 - **External Isolation:** Multi-project management is handled by creating *different* Linux users via NixOS/Home Manager.
 
 ---
@@ -42,8 +42,8 @@ All work MUST be tracked in `TASKS.md` using the following lifecycle:
 - **Done:** Verified and completed work.
 
 ### Agent Communication
-- **Shared History:** Use `.jbot/memory.log` for high-level summaries of agent actions.
-- **Direct Messaging:** Use `.jbot/messages/` for agent-to-agent coordination.
+- **Shared History:** Use `.spirit/memory.log` for high-level summaries of agent actions.
+- **Direct Messaging:** Use `.spirit/messages/` for agent-to-agent coordination.
 
 ---
 
@@ -94,8 +94,8 @@ All hooks live in `.githooks/` and are automatically activated by the dev shell:
 - **Type Safety:** Use Python type hints and clean Nix structures to provide implicit documentation.
 
 ### Organizational Memory (nb)
-- **Knowledge Base:** All major architectural decisions (ADRs) must be recorded in the `jbot` notebook using `nb jbot:add`.
-- **Search First:** Use `nb jbot:q` to search the knowledge base for existing research before initiating new technical audits.
+- **Knowledge Base:** All major architectural decisions (ADRs) must be recorded in the `spirit` notebook using `nb spirit:add`.
+- **Search First:** Use `nb spirit:q` to search the knowledge base for existing research before initiating new technical audits.
 - **Verification:** Task results and verified technical benchmarks should be exported to the knowledge base to ensure long-term persistence.
 
 ### Purity Guard (just / deadnix)
@@ -105,7 +105,7 @@ All hooks live in `.githooks/` and are automatically activated by the dev shell:
 
 ### Information Density
 - **Executable Metadata:** Treat documentation as executable law.
-- **ADR Links:** Reference `nb` ADRs directly in code comments (e.g., `# Context: [[nb:jbot:adr-001]]`).
+- **ADR Links:** Reference `nb` ADRs directly in code comments (e.g., `# Context: [[nb:spirit:adr-001]]`).
 - **Mermaid-as-Code:** Every complex script should have an accompanying `.mermaid` file or Mermaid docstring block.
 - **Type-Driven Docs:** 100% usage of Python Type Hints and Nix Lib types. Use pydocstyle block structures.
 - **Structure as Code:** Define JSON Schemas for all state files (e.g., `agents.json`) to prevent data hallucination.

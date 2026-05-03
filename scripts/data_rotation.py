@@ -1,11 +1,11 @@
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-57]]
+# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-6]], [[nb:spirit:adr-57]]
 import os
 import shutil
 from datetime import datetime
 
-import jbot_core as core
-import jbot_utils as utils
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+import spirit_utils as utils
+from spirit_memory_interface import get_memory_client
 
 
 def purge_directives(dir_path: str, archive_path: str) -> int:
@@ -104,8 +104,8 @@ def rotate_nb_notes(tag: str, limit: int = 5, preserve_ids: list = None) -> int:
 def perform_rotations(project_dir: str) -> None:
     """Executes all automated data purging and rotation tasks."""
     purge_directives(
-        os.path.join(project_dir, ".jbot/directives"),
-        os.path.join(project_dir, ".jbot/directives/archive"),
+        os.path.join(project_dir, ".spirit/directives"),
+        os.path.join(project_dir, ".spirit/directives/archive"),
     )
 
     # Memory and tasks are now handled by nb.
@@ -120,6 +120,6 @@ def perform_rotations(project_dir: str) -> None:
     rotate_nb_notes("memory", limit=50)
 
     rotate_messages(
-        os.path.join(project_dir, ".jbot/messages"),
-        os.path.join(project_dir, ".jbot/messages/archive"),
+        os.path.join(project_dir, ".spirit/messages"),
+        os.path.join(project_dir, ".spirit/messages/archive"),
     )

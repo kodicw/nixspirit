@@ -1,12 +1,12 @@
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-57]]
+# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-57]]
 import os
 import re
 import glob
 from datetime import datetime
 from typing import List, Dict, Optional
 
-import jbot_core as core
-from jbot_memory_interface import get_memory_client
+import spirit_core as core
+from spirit_memory_interface import get_memory_client
 
 
 def update_note_stably(title: str, content: str, tags: List[str]) -> bool:
@@ -90,9 +90,9 @@ def is_directive_expired(content: str, filename: Optional[str] = None) -> bool:
 def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") -> bool:
     """Generates a markdown dashboard summarizing the project status.
 
-    Context: [[nb:jbot:adr-57]]
+    Context: [[nb:spirit:adr-57]]
     """
-    import jbot_infra as infra
+    import spirit_infra as infra
 
     try:
         summary = infra.get_project_summary(project_dir)
@@ -118,7 +118,7 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
         }
         tasks_data = summary["tasks"]
 
-    dashboard_content = "# JBot Dashboard\n\n"
+    dashboard_content = "# spirit Dashboard\n\n"
     dashboard_content += f"*Last Updated: {summary['timestamp']}*\n\n"
 
     dashboard_content += "## 🎯 Strategic Vision\n"
@@ -197,7 +197,7 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
                 dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([[nb:{note_id}]])\n"
             else:
                 # Legacy file link
-                dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([{m['filename']}](.jbot/messages/{m['filename']}))\n"
+                dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([{m['filename']}](.spirit/messages/{m['filename']}))\n"
         dashboard_content += "\n"
     else:
         dashboard_content += "No recent messages.\n\n"

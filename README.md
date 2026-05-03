@@ -40,7 +40,7 @@ As the team grows beyond 4-8 agents, Nix Spirit scales by transitioning from a s
 Include Nix Spirit in your Home Manager configuration and declaratively assemble your autonomous team:
 
 ```nix
-programs.jbot = {
+programs.spirit = {
   enable = true;
   projectDir = "/home/user/code/my-project"; # Global default
 
@@ -71,10 +71,10 @@ programs.jbot = {
 home-manager switch --flake .
 
 # Check the dashboard
-jbot status
+spirit status
 
 # Inspect the "Collective Memory"
-nb jbot:q "architecture"
+nb spirit:q "architecture"
 ```
 
 ## 👥 The PAO Team
@@ -86,7 +86,7 @@ nb jbot:q "architecture"
 
 ## 🛠️ Toolstack
 
-*   **`jbot` CLI**: The organizational multi-tool for status, tasks, and maintenance.
+*   **`spirit` CLI**: The organizational multi-tool for status, tasks, and maintenance.
 *   **`nb`**: Git-backed knowledge base for long-term technical memory.
 *   **`bubblewrap`**: Secure sandbox for stateful agent execution.
 *   **`systemd`**: The organizational heart, managing schedules and resource quotas.
@@ -107,7 +107,7 @@ While an individual organization is flat, **external isolation** between differe
 ### 3. Process Sandboxing (Bubblewrap)
 Each agent executes within a **Stateless Agent Execution Model (SAEM)** enforced by `bubblewrap`:
 *   **Strict Read-Only**: The entire system and home directory are mounted as read-only by default.
-*   **Surgical Write Access**: Agents are only granted write access to their specific `PROJECT_DIR` and necessary communication queues (`.jbot/queues`, `.jbot/outbox`).
+*   **Surgical Write Access**: Agents are only granted write access to their specific `PROJECT_DIR` and necessary communication queues (`.spirit/queues`, `.spirit/outbox`).
 *   **Stateless Infrastructure**: Infrastructure logs and agent registries are provided as read-only binds, preventing agents from tampering with the organizational heartbeat.
 
 ---

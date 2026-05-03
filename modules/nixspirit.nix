@@ -5,11 +5,11 @@
   ...
 }:
 let
-  cfg = config.programs.jbot;
+  cfg = config.programs.nixspirit;
 
   # We expect the package to be passed in or use the one from corePackages
-  jbot-cli = pkgs.callPackage ../pkgs/jbot-cli.nix { scripts = ../scripts; };
-  jbotPython = jbot-cli.python;
+  spirit-cli = pkgs.callPackage ../pkgs/spirit-cli.nix { scripts = ../scripts; };
+  spiritPython = spirit-cli.python;
 
   agentModule = _: {
     options = {
@@ -125,7 +125,7 @@ let
           name: _:
           let
             projectDir = root + "/${name}";
-            agentsFile = projectDir + "/.jbot/agents.json";
+            agentsFile = projectDir + "/.spirit/agents.json";
           in
           if builtins.pathExists agentsFile then
             let
@@ -182,8 +182,8 @@ let
     pkgs.pandoc
     pkgs.w3m
     pkgs.bandit
-    jbotPython
-    jbot-cli
+    spiritPython
+    spirit-cli
   ];
 
   # Pick a representative project directory for maintenance if multiple exist
@@ -191,11 +191,11 @@ let
   maintenanceProjectDir = firstAgent.projectDir;
 in
 {
-  options.programs.jbot = {
+  options.programs.nixspirit = {
     enable = lib.mkEnableOption "Nix Spirit AI Agent Scheduler";
     projectDir = lib.mkOption {
       type = lib.types.path;
-      default = config.home.homeDirectory + "/code/jbot";
+      default = config.home.homeDirectory + "/code/spirit";
       description = "The default project directory for all agents.";
     };
     discoveryRoot = lib.mkOption {
@@ -205,7 +205,7 @@ in
     };
     promptFile = lib.mkOption {
       type = lib.types.path;
-      default = ../jbot_prompt.txt;
+      default = ../spirit_prompt.txt;
       description = "The default base prompt file for all agents.";
     };
     maintenanceInterval = lib.mkOption {
@@ -231,8 +231,8 @@ in
     ];
 
     home.packages = [
-      jbot-cli
-      jbotPython
+      spirit-cli
+      spiritPython
       pkgs.nb
       pkgs.gum
       pkgs.tealdeer
@@ -240,7 +240,7 @@ in
       pkgs.ripgrep
     ];
 
-    home.activation.jbotEnvironmentAudit = config.lib.dag.entryAfter [ "writeBoundary" ] ''
+    home.activation.spiritEnvironmentAudit = config.lib.dag.entryAfter [ "writeBoundary" ] ''
       # Generate Technical Environment Note for nb
       AUDIT_CONTENT=$(cat <<EOF
       # ADR: Technical Environment & Tool Registry (Deep Audit)
@@ -276,9 +276,9 @@ in
       EOF
       )
 
-      # Push to nb stably via jbot CLI
-      JBOT_BIN="${jbot-cli}/bin/jbot"
-      if [ -x "$JBOT_BIN" ]; then
+      # Push to nb stably via spirit CLI
+      spirit_BIN="${spirit-cli}/bin/spirit"
+      if [ -x "$spirit_BIN" ]; then
         export EDITOR=cat
         export PATH="$PATH:${
           lib.makeBinPath [
@@ -289,19 +289,19 @@ in
         export NB_BIN="${pkgs.nb}/bin/nb"
         export NB_USER_NAME="Nix Spirit (${config.home.username})"
         export NB_USER_EMAIL="${config.home.username}@nixos"
-        echo "$AUDIT_CONTENT" | "$JBOT_BIN" maintenance push-note --title "ADR: Environment and Tool Registry" --tags "type:adr,type:audit" || true
+        echo "$AUDIT_CONTENT" | "$spirit_BIN" maintenance push-note --title "ADR: Environment and Tool Registry" --tags "type:adr,type:audit" || true
       fi
     '';
 
     systemd.user.services =
       (lib.mapAttrs' (
         name: agent:
-        lib.nameValuePair "jbot-agent-${name}" (
+        lib.nameValuePair "spirit-agent-${name}" (
           lib.mkIf (agent.enable or true) {
             Unit = {
               Description = "Scheduled Nix Spirit AI Developer: ${agent.role}";
-              After = map (n: "jbot-agent-${n}.service") (agent.dependsOn or [ ]);
-              Wants = map (n: "jbot-agent-${n}.service") (agent.dependsOn or [ ]);
+              After = map (n: "spirit-agent-${n}.service") (agent.dependsOn or [ ]);
+              Wants = map (n: "spirit-agent-${n}.service") (agent.dependsOn or [ ]);
             };
             Service = {
               CPUQuota = agent.cpuQuota or "25%";
@@ -352,7 +352,7 @@ in
                 "${config.home.homeDirectory}/.config/gh"
               ]
               ++ lib.optional agent.useDBus "/run/user/%U/bus";
-              ExecStart = "${pkgs.writeShellScript "jbot-launcher-${name}" ''
+              ExecStart = "${pkgs.writeShellScript "spirit-launcher-${name}" ''
                 set -euo pipefail
 
                 # Export all required environment variables for the standalone launcher
@@ -370,7 +370,7 @@ in
                 export CLI_TYPE="${agent.cliType or "gemini"}"
                 export CLI_MODEL="${agent.model or "gemini-1.5-pro"}"
                 export AGENTS_JSON="${agentsJson}"
-                export JBOT_CLI_BIN="${jbot-cli}/bin/jbot"
+                export spirit_CLI_BIN="${spirit-cli}/bin/spirit"
                 ${lib.optionalString agent.useDBus "export USE_DBUS=1"}
 
                 # Environment paths
@@ -380,14 +380,14 @@ in
 
                 # Standard Identity
                 export GIT_AUTHOR_NAME="Nix Spirit (${name})"
-                export GIT_AUTHOR_EMAIL="jbot-${name}@internal.jbot"
+                export GIT_AUTHOR_EMAIL="spirit-${name}@internal.spirit"
                 export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
                 export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
                 export NB_USER_NAME="$GIT_AUTHOR_NAME"
                 export NB_USER_EMAIL="$GIT_AUTHOR_EMAIL"
 
                 # Call the formally verified standalone launcher
-                exec "${jbot-cli}/scripts/jbot-launcher.sh"
+                exec "${spirit-cli}/scripts/spirit-launcher.sh"
               ''}";
 
               WorkingDirectory = toString agent.projectDir;
@@ -396,7 +396,7 @@ in
         )
       ) allAgents)
       // {
-        jbot-maintenance = {
+        spirit-maintenance = {
           Unit = {
             Description = "Nix Spirit Infrastructure Maintenance Service";
           };
@@ -413,7 +413,7 @@ in
                   pkgs.gnugrep
                   pkgs.gawk
                   pkgs.which
-                  jbot-cli
+                  spirit-cli
                 ]
               }"
               "PROJECT_DIR=${maintenanceProjectDir}"
@@ -443,13 +443,13 @@ in
             ]
             ++ (if cfg.discoveryRoot != null then [ (toString cfg.discoveryRoot) ] else [ ]);
 
-            ExecStart = "${jbot-cli}/bin/jbot maintenance run${
+            ExecStart = "${spirit-cli}/bin/spirit maintenance run${
               if cfg.discoveryRoot != null then " --all" else ""
             }";
             WorkingDirectory = maintenanceProjectDir;
           };
         };
-        jbot-knowledge-base = {
+        spirit-knowledge-base = {
           Unit = {
             Description = "Nix Spirit Knowledge Base HTTP Server (nb browse)";
             After = [ "network.target" ];
@@ -482,7 +482,7 @@ in
               "${config.home.homeDirectory}/.nb"
             ];
 
-            ExecStart = "${pkgs.nb}/bin/nb jbot:browse --serve";
+            ExecStart = "${pkgs.nb}/bin/nb spirit:browse --serve";
             Restart = "always";
             RestartSec = "10";
             WorkingDirectory = config.home.homeDirectory;
@@ -494,7 +494,7 @@ in
     systemd.user.timers =
       (lib.mapAttrs' (
         name: agent:
-        lib.nameValuePair "jbot-agent-${name}" (
+        lib.nameValuePair "spirit-agent-${name}" (
           lib.mkIf (agent.enable or true) {
             Timer.OnCalendar = agent.interval or "hourly";
             Install.WantedBy = [ "timers.target" ];
@@ -502,7 +502,7 @@ in
         )
       ) allAgents)
       // {
-        jbot-maintenance = {
+        spirit-maintenance = {
           Timer.OnCalendar = cfg.maintenanceInterval;
           Install.WantedBy = [ "timers.target" ];
         };
