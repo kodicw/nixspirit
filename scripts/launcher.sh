@@ -85,7 +85,7 @@ timeout 30m bwrap \
   "${spirit_CLI_BIN}" agent \
     --name "${AGENT_NAME}" \
     --role "${AGENT_ROLE}" \
-    --desc "${AGENT_DESCRIPTION}" \
+    --desc "${AGENT_DESCRIPTION:-""}" \
     --prompt "${PROMPT_FILE}" \
     --cli-bin "${CLI_BIN}" \
     --cli-type "${CLI_TYPE}" \
