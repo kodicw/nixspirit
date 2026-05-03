@@ -358,6 +358,7 @@ in
               PATH = binPath corePackages;
               NB_DIR = "${config.home.homeDirectory}/.nb";
               HOME = "${config.home.homeDirectory}";
+              EDITOR = "cat";
             };
 
             BindReadOnlyPaths = [
