@@ -29,7 +29,7 @@ mkdir -p "${PROJECT_DIR}/.spirit/outbox"
 
 # Provide the agent registry to the project directory
 if [ "$(realpath "${AGENTS_JSON}")" != "$(realpath "${PROJECT_DIR}/.spirit/agents.json" 2>/dev/null)" ]; then
-    cp "${AGENTS_JSON}" "${PROJECT_DIR}/.spirit/agents.json"
+    cp -f "${AGENTS_JSON}" "${PROJECT_DIR}/.spirit/agents.json" || echo "Warning: Could not copy agents.json"
 fi
 
 # Create a minimal fake passwd file to satisfy Node.js os.userInfo()
