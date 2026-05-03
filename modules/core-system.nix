@@ -257,7 +257,7 @@ in
               TimeoutStopSec = agent.timeoutStopSec;
               KillMode = agent.killMode;
               Delegate = true;
-              Environment = lib.mapAttrsToList (n: v: "${n}=${toString v}") {
+              Environment = lib.mapAttrsToList (n: v: "${n}=${lib.escapeShellArg (toString v)}") {
                 PATH = binPath (
                   corePackages
                   ++ [
@@ -319,7 +319,7 @@ in
             Description = "Autonomous Infrastructure Maintenance Service";
           };
           Service = constants.commonSandbox // {
-            Environment = lib.mapAttrsToList (n: v: "${n}=${toString v}") {
+            Environment = lib.mapAttrsToList (n: v: "${n}=${lib.escapeShellArg (toString v)}") {
               PATH = binPath [
                 pkgs.coreutils
                 pkgs.bash
@@ -354,7 +354,7 @@ in
             After = [ "network.target" ];
           };
           Service = constants.commonSandbox // {
-            Environment = lib.mapAttrsToList (n: v: "${n}=${toString v}") {
+            Environment = lib.mapAttrsToList (n: v: "${n}=${lib.escapeShellArg (toString v)}") {
               PATH = binPath corePackages;
               NB_DIR = "${config.home.homeDirectory}/.nb";
               HOME = "${config.home.homeDirectory}";
