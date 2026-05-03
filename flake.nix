@@ -112,9 +112,9 @@
     )
     // {
       homeManagerModules = {
-        spirit = import ./modules/spirit.nix;
+        nixspirit = import ./modules/nixspirit.nix;
         ai-company = import ./modules/ai-company.nix;
-        default = self.homeManagerModules.spirit;
+        default = self.homeManagerModules.nixspirit;
       };
     };
 }
