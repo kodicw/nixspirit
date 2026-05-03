@@ -250,41 +250,6 @@ in
               After = map (n: "${constants.servicePrefix}${n}.service") (agent.dependsOn or [ ]);
               Wants = map (n: "${constants.servicePrefix}${n}.service") (agent.dependsOn or [ ]);
             };
-            environment = {
-              PATH = binPath (
-                corePackages
-                ++ [
-                  pkgs.bubblewrap
-                  pkgs.coreutils
-                  agent.geminiPackage
-                  agent.opencodePackage
-                ]
-                ++ agent.extraPackages
-              );
-              AGENT_NAME = name;
-              AGENT_ROLE = agent.role;
-              AGENT_DESCRIPTION = agent.description;
-              PROJECT_DIR = toString agent.projectDir;
-              PROMPT_FILE = toString (agent.promptFile or cfg.promptFile);
-              CLI_BIN =
-                if agent.cliType == "gemini" then
-                  "${agent.geminiPackage}/bin/gemini"
-                else
-                  "${agent.opencodePackage}/bin/opencode";
-              CLI_TYPE = agent.cliType;
-              CLI_MODEL = agent.model;
-              AGENTS_JSON = agentsJson;
-              CORE_CLI_BIN = "${core-cli}/bin/core-cli";
-              HM_PROFILE = "${config.home.homeDirectory}/.nix-profile";
-              NB_DIR = "${config.home.homeDirectory}/.nb";
-              GIT_AUTHOR_NAME = "Autonomous System (${name})";
-              GIT_AUTHOR_EMAIL = "agent-${name}@internal.local";
-              GIT_COMMITTER_NAME = "Autonomous System (${name})";
-              GIT_COMMITTER_EMAIL = "agent-${name}@internal.local";
-              NB_USER_NAME = "Autonomous System (${name})";
-              NB_USER_EMAIL = "agent-${name}@internal.local";
-              USE_DBUS = if agent.useDBus then "1" else "";
-            };
             Service = constants.commonSandbox // {
               CPUQuota = agent.cpuQuota;
               MemoryMax = agent.memoryLimit;
@@ -292,6 +257,41 @@ in
               TimeoutStopSec = agent.timeoutStopSec;
               KillMode = agent.killMode;
               Delegate = true;
+              Environment = lib.mapAttrsToList (n: v: ''"${n}=${toString v}"'') {
+                PATH = binPath (
+                  corePackages
+                  ++ [
+                    pkgs.bubblewrap
+                    pkgs.coreutils
+                    agent.geminiPackage
+                    agent.opencodePackage
+                  ]
+                  ++ agent.extraPackages
+                );
+                AGENT_NAME = name;
+                AGENT_ROLE = agent.role;
+                AGENT_DESCRIPTION = agent.description;
+                PROJECT_DIR = toString agent.projectDir;
+                PROMPT_FILE = toString (agent.promptFile or cfg.promptFile);
+                CLI_BIN =
+                  if agent.cliType == "gemini" then
+                    "${agent.geminiPackage}/bin/gemini"
+                  else
+                    "${agent.opencodePackage}/bin/opencode";
+                CLI_TYPE = agent.cliType;
+                CLI_MODEL = agent.model;
+                AGENTS_JSON = agentsJson;
+                CORE_CLI_BIN = "${core-cli}/bin/core-cli";
+                HM_PROFILE = "${config.home.homeDirectory}/.nix-profile";
+                NB_DIR = "${config.home.homeDirectory}/.nb";
+                GIT_AUTHOR_NAME = "Autonomous System (${name})";
+                GIT_AUTHOR_EMAIL = "agent-${name}@internal.local";
+                GIT_COMMITTER_NAME = "Autonomous System (${name})";
+                GIT_COMMITTER_EMAIL = "agent-${name}@internal.local";
+                NB_USER_NAME = "Autonomous System (${name})";
+                NB_USER_EMAIL = "agent-${name}@internal.local";
+                USE_DBUS = if agent.useDBus then "1" else "";
+              };
 
               BindPaths = [
                 (toString agent.projectDir)
@@ -318,23 +318,24 @@ in
           Unit = {
             Description = "Autonomous Infrastructure Maintenance Service";
           };
-          environment = {
-            PATH = binPath [
-              pkgs.coreutils
-              pkgs.bash
-              pkgs.git
-              pkgs.python3
-              pkgs.findutils
-              pkgs.gnused
-              pkgs.gnugrep
-              pkgs.gawk
-              pkgs.which
-              core-cli
-            ];
-            PROJECT_DIR = maintenanceProjectDir;
-            DISCOVERY_ROOT = if cfg.discoveryRoot != null then toString cfg.discoveryRoot else "";
-          };
           Service = constants.commonSandbox // {
+            Environment = lib.mapAttrsToList (n: v: ''"${n}=${toString v}"'') {
+              PATH = binPath [
+                pkgs.coreutils
+                pkgs.bash
+                pkgs.git
+                pkgs.python3
+                pkgs.findutils
+                pkgs.gnused
+                pkgs.gnugrep
+                pkgs.gawk
+                pkgs.which
+                core-cli
+              ];
+              PROJECT_DIR = maintenanceProjectDir;
+              DISCOVERY_ROOT = if cfg.discoveryRoot != null then toString cfg.discoveryRoot else "";
+            };
+
             BindPaths = [
               maintenanceProjectDir
               "${config.home.homeDirectory}/.nb"
@@ -352,12 +353,13 @@ in
             Description = "Autonomous Knowledge Base HTTP Server (nb browse)";
             After = [ "network.target" ];
           };
-          environment = {
-            PATH = binPath corePackages;
-            NB_DIR = "${config.home.homeDirectory}/.nb";
-            HOME = "${config.home.homeDirectory}";
-          };
           Service = constants.commonSandbox // {
+            Environment = lib.mapAttrsToList (n: v: ''"${n}=${toString v}"'') {
+              PATH = binPath corePackages;
+              NB_DIR = "${config.home.homeDirectory}/.nb";
+              HOME = "${config.home.homeDirectory}";
+            };
+
             BindReadOnlyPaths = [
               "${config.home.homeDirectory}/.nb"
             ];
