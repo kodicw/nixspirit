@@ -28,7 +28,9 @@ mkdir -p "${PROJECT_DIR}/.spirit/queues"
 mkdir -p "${PROJECT_DIR}/.spirit/outbox"
 
 # Provide the agent registry to the project directory
-cp "${AGENTS_JSON}" "${PROJECT_DIR}/.spirit/agents.json"
+if [ "$(realpath "${AGENTS_JSON}")" != "$(realpath "${PROJECT_DIR}/.spirit/agents.json" 2>/dev/null)" ]; then
+    cp "${AGENTS_JSON}" "${PROJECT_DIR}/.spirit/agents.json"
+fi
 
 # Create a minimal fake passwd file to satisfy Node.js os.userInfo()
 FAKE_PASSWD=$(mktemp)
