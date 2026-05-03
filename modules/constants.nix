@@ -16,26 +16,12 @@ rec {
   memoryLog = "${stateDir}/memory.log";
 
   # --- Sandboxing Defaults ---
-  # Softer sandbox for better compatibility with Crostini/restricted environments.
-  # bubblewrap within the launcher provides the primary filesystem isolation.
+  # Minimum sandboxing for maximum compatibility in Crostini.
+  # bubblewrap within the launcher provides the actual filesystem isolation.
   commonSandbox = {
-    ProtectSystem = "strict";
-    ProtectHome = "read-only";
-    PrivateTmp = true;
-    # Some options are disabled to avoid CAPABILITIES errors in unprivileged containers.
-    # PrivateDevices = true;
-    # ProtectControlGroups = true;
-    # ProtectKernelTunables = true;
-    # ProtectKernelModules = true;
-    # LockPersonality = true;
-    # RestrictRealtime = true;
-    
-    RestrictAddressFamilies = [
-      "AF_UNIX"
-      "AF_INET"
-      "AF_INET6"
-    ];
-    RestrictNamespaces = false; # Needed for bubblewrap
+    # Most systemd sandboxing is disabled here because it often fails in 
+    # unprivileged containers like Crostini/ChromeOS.
+    # The agent-launcher.sh uses 'bwrap' which is more reliable for our needs.
   };
 
   # --- Resource Limits ---
