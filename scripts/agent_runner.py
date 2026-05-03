@@ -229,6 +229,13 @@ def run_agent(
         nb_home = os.path.join(home_dir, ".nb")
         os.makedirs(nb_home, exist_ok=True)
         spirit_link = os.path.join(nb_home, "spirit")
+        if os.path.islink(spirit_link):
+            os.unlink(spirit_link)
+        elif os.path.exists(spirit_link):
+            # If it's a real directory or file, don't overwrite it, but skip symlinking
+            # This is a safety check.
+            pass
+
         if not os.path.exists(spirit_link):
             os.symlink(os.path.join(project_dir, ".nb"), spirit_link)
 
