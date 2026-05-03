@@ -387,7 +387,7 @@ in
                 export NB_USER_EMAIL="$GIT_AUTHOR_EMAIL"
 
                 # Call the formally verified standalone launcher
-                exec "${spirit-cli}/scripts/spirit-launcher.sh"
+                exec "${spirit-cli}/scripts/launcher.sh"
               ''}";
 
               WorkingDirectory = toString agent.projectDir;
