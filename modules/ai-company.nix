@@ -12,7 +12,7 @@ in
     inherit projectDir;
 
     agents = {
-      # --- spirit Hierarchical Specialist Organization ---
+      # --- Core Hierarchical Specialist Organization ---
 
       lead = {
         enable = true;

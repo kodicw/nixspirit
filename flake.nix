@@ -113,6 +113,7 @@
     // {
       homeManagerModules = {
         core-system = import ./modules/core-system.nix;
+        ai-company = import ./modules/ai-company.nix;
         default = self.homeManagerModules.core-system;
       };
     };
