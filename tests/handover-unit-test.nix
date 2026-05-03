@@ -1,7 +1,7 @@
 {
   pkgs,
-  jbot-scripts,
-  jbot_prompt_txt,
+  core-scripts,
+  system_prompt.txt,
   ...
 }:
 let
@@ -21,7 +21,7 @@ let
     echo '{"scope": "local", "status": "success", "summary": "Handover test success"}' > "$MEMORY_OUTPUT"
   '';
 in
-pkgs.runCommand "jbot-handover-unit-test"
+pkgs.runCommand "core-handover-unit-test"
   {
     nativeBuildInputs = [
       pkgs.python3
@@ -40,24 +40,24 @@ pkgs.runCommand "jbot-handover-unit-test"
 
     # Setup a stateful task simulation
     cat <<EOF > TASKS.md
-    # JBot Task Board
+    # Autonomous System Task Board
     ## Active Tasks
     - [ ] Implement new feature (Agent: lead) - Status: Done
     - [ ] Verify new feature (Agent: tester) - Status: To Do
     EOF
 
-    mkdir -p .jbot
-    echo '{"tester": {"role": "QA", "description": "QA Tester", "projectDir": "'$PROJECT_DIR'"}, "lead": {"role": "Lead", "description": "Lead Dev", "projectDir": "'$PROJECT_DIR'"}}' > .jbot/agents.json
+    mkdir -p .system
+    echo '{"tester": {"role": "QA", "description": "QA Tester", "projectDir": "'$PROJECT_DIR'"}, "lead": {"role": "Lead", "description": "Lead Dev", "projectDir": "'$PROJECT_DIR'"}}' > .system/agents.json
 
     export AGENT_NAME="tester"
     export AGENT_ROLE="QA"
     export AGENT_DESCRIPTION="QA Tester"
-    export PROMPT_FILE="${jbot_prompt_txt}"
+    export PROMPT_FILE="${system_prompt.txt}"
     export GEMINI_PACKAGE="gemini"
-    export MEMORY_OUTPUT=".jbot/queues/tester.json"
-    export PYTHONPATH=$PYTHONPATH:${jbot-scripts}
+    export MEMORY_OUTPUT=".system/queues/tester.json"
+    export PYTHONPATH=$PYTHONPATH:${core-scripts}
 
-    python3 ${jbot-scripts}/jbot-cli.py agent
+    python3 ${core-scripts}/core_cli.py agent
 
     # Verifications
     if ! grep -q "Implement new feature (Agent: lead) - Status: Done" .prompt_received; then

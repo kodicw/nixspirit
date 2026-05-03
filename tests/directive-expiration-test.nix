@@ -1,7 +1,7 @@
 {
   pkgs,
-  jbot-scripts,
-  jbot_prompt_txt,
+  core-scripts,
+  system_prompt.txt,
   ...
 }:
 let
@@ -21,7 +21,7 @@ let
     echo '{"scope": "local", "status": "success", "summary": "Directive expiration test success"}' > "$MEMORY_OUTPUT"
   '';
 in
-pkgs.runCommand "jbot-directive-expiration-test"
+pkgs.runCommand "core-directive-expiration-test"
   {
     nativeBuildInputs = [
       pkgs.python3
@@ -39,43 +39,43 @@ pkgs.runCommand "jbot-directive-expiration-test"
             # Initial files
             echo "Goal: Test directive expiration" > .project_goal
             echo "# Task Board" > TASKS.md
-            mkdir -p .jbot/directives
+            mkdir -p .system/directives
             
             # 1. Active directive (no date)
-            echo "Active directive content" > .jbot/directives/001_active.txt
+            echo "Active directive content" > .system/directives/001_active.txt
             
             # 2. Expired directive (filename date in the past)
-            echo "Expired filename directive content" > .jbot/directives/002_2020-01-01_expired.md
+            echo "Expired filename directive content" > .system/directives/002_2020-01-01_expired.md
             
             # 3. Future directive (filename date in the future)
-            echo "Future filename directive content" > .jbot/directives/003_2099-01-01_future.md
+            echo "Future filename directive content" > .system/directives/003_2099-01-01_future.md
             
             # 4. Expired directive (content expiration in the past)
-            cat <<EOF > .jbot/directives/004_expired_content.md
+            cat <<EOF > .system/directives/004_expired_content.md
     # Directive 004
     Expiration: 2020-01-01
     Expired content directive content
     EOF
 
             # 5. Future directive (content expiration in the future)
-            cat <<EOF > .jbot/directives/005_future_content.md
+            cat <<EOF > .system/directives/005_future_content.md
     # Directive 005
     Expiration: 2099-01-01
     Future content directive content
     EOF
 
-            mkdir -p .jbot
-            echo '{"dev": {"role": "Lead", "description": "Lead Dev", "projectDir": "'$PROJECT_DIR'"}}' > .jbot/agents.json
+            mkdir -p .system
+            echo '{"dev": {"role": "Lead", "description": "Lead Dev", "projectDir": "'$PROJECT_DIR'"}}' > .system/agents.json
 
             export AGENT_NAME="dev"
             export AGENT_ROLE="Lead"
             export AGENT_DESCRIPTION="Lead Dev"
-            export PROMPT_FILE="${jbot_prompt_txt}"
+            export PROMPT_FILE="${system_prompt.txt}"
             export GEMINI_PACKAGE="gemini"
-            export MEMORY_OUTPUT=".jbot/queues/dev.json"
-            export PYTHONPATH=$PYTHONPATH:${jbot-scripts}
+            export MEMORY_OUTPUT=".system/queues/dev.json"
+            export PYTHONPATH=$PYTHONPATH:${core-scripts}
 
-            python3 ${jbot-scripts}/jbot-cli.py agent
+            python3 ${core-scripts}/core_cli.py agent
 
             # Verifications
             echo "Verifying prompt content..."

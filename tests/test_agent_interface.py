@@ -6,11 +6,11 @@ import sys
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_agent_interface
+import core_agent_interface
 
 
 def test_gemini_interface():
-    interface = jbot_agent_interface.GeminiInterface("/path/to/gemini")
+    interface = core_agent_interface.GeminiInterface("/path/to/gemini")
     cmd = interface.get_command("Hello")
     assert cmd == [
         "/path/to/gemini",
@@ -23,7 +23,7 @@ def test_gemini_interface():
 
 
 def test_opencode_interface():
-    interface = jbot_agent_interface.OpenCodeInterface("/path/to/opencode")
+    interface = core_agent_interface.OpenCodeInterface("/path/to/opencode")
     cmd = interface.get_command("Hello")
     assert cmd == [
         "/path/to/opencode",
@@ -35,28 +35,28 @@ def test_opencode_interface():
 
 def test_get_interface():
     # Test Gemini default
-    iface = jbot_agent_interface.get_interface("gemini", "gemini")
-    assert isinstance(iface, jbot_agent_interface.GeminiInterface)
+    iface = core_agent_interface.get_interface("gemini", "gemini")
+    assert isinstance(iface, core_agent_interface.GeminiInterface)
 
     # Test OpenCode by name
-    iface = jbot_agent_interface.get_interface("opencode", "something")
-    assert isinstance(iface, jbot_agent_interface.OpenCodeInterface)
+    iface = core_agent_interface.get_interface("opencode", "something")
+    assert isinstance(iface, core_agent_interface.OpenCodeInterface)
 
     # Test OpenCode by binary path
-    iface = jbot_agent_interface.get_interface("any", "/usr/bin/opencode-cli")
-    assert isinstance(iface, jbot_agent_interface.OpenCodeInterface)
+    iface = core_agent_interface.get_interface("any", "/usr/bin/opencode-cli")
+    assert isinstance(iface, core_agent_interface.OpenCodeInterface)
 
 
 def test_interface_run_with_rate_limit(tmp_path):
     os.chdir(tmp_path)
-    os.makedirs(".jbot/locks", exist_ok=True)
-    lock_file = ".jbot/locks/api.lock"
+    os.makedirs(".system/locks", exist_ok=True)
+    lock_file = ".system/locks/api.lock"
 
     # Set last run time to now
     with open(lock_file, "w") as f:
         f.write(str(time.time()))
 
-    interface = jbot_agent_interface.GeminiInterface("echo")
+    interface = core_agent_interface.GeminiInterface("echo")
 
     with patch("subprocess.Popen") as mock_popen, patch("time.sleep") as mock_sleep:
         mock_process = MagicMock()
@@ -75,7 +75,7 @@ def test_interface_run_with_rate_limit(tmp_path):
 
 def test_interface_run_exception(tmp_path):
     os.chdir(tmp_path)
-    interface = jbot_agent_interface.GeminiInterface("echo")
+    interface = core_agent_interface.GeminiInterface("echo")
 
     with patch("subprocess.Popen") as mock_popen:
         mock_popen.side_effect = Exception("Popen failed")
@@ -85,14 +85,14 @@ def test_interface_run_exception(tmp_path):
 
 def test_interface_rate_limit_invalid_lock(tmp_path):
     os.chdir(tmp_path)
-    os.makedirs(".jbot/locks", exist_ok=True)
-    lock_file = ".jbot/locks/api.lock"
+    os.makedirs(".system/locks", exist_ok=True)
+    lock_file = ".system/locks/api.lock"
 
     # Invalid lock file content
     with open(lock_file, "w") as f:
         f.write("invalid")
 
-    interface = jbot_agent_interface.GeminiInterface("echo")
+    interface = core_agent_interface.GeminiInterface("echo")
     with patch("subprocess.Popen") as mock_popen:
         mock_process = MagicMock()
         mock_process.stdout = []
@@ -106,7 +106,7 @@ def test_interface_rate_limit_invalid_lock(tmp_path):
 
 def test_interface_lock_write_failure(tmp_path):
     os.chdir(tmp_path)
-    interface = jbot_agent_interface.GeminiInterface("echo")
+    interface = core_agent_interface.GeminiInterface("echo")
     with patch("subprocess.Popen") as mock_popen:
         mock_process = MagicMock()
         mock_process.stdout = []
@@ -130,12 +130,12 @@ def test_interface_lock_write_failure(tmp_path):
 def test_abstract_interface():
     # Attempting to instantiate AiInterface should fail
     with pytest.raises(TypeError):
-        jbot_agent_interface.AiInterface("bin")
+        core_agent_interface.AiInterface("bin")
 
     # Call pass on a concrete instance if we really want to cover that line 18
     # But usually pass in abstract methods is fine to remain uncovered or is covered by subclassing.
     # We can create a dummy subclass.
-    class Dummy(jbot_agent_interface.AiInterface):
+    class Dummy(core_agent_interface.AiInterface):
         def get_command(self, prompt):
             super().get_command(prompt)
             return ["dummy"]

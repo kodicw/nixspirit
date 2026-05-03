@@ -1,20 +1,22 @@
-# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-6]], [[nb:spirit:adr-62]], [[nb:spirit:adr-61]], [[nb:spirit:adr-63]], [[nb:spirit:adr-66]], [[nb:spirit:adr-57]], [[nb:spirit:adr-193]], [[nb:spirit:adr-210]]
+import sys
+# Context: [[nb:knowledge:adr-2]], [[nb:knowledge:adr-6]], [[nb:knowledge:adr-62]], [[nb:knowledge:adr-61]], [[nb:knowledge:adr-63]], [[nb:knowledge:adr-66]], [[nb:knowledge:adr-57]], [[nb:knowledge:adr-193]], [[nb:knowledge:adr-210]]
 import os
 import json
 import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
-import spirit_core as core
-import spirit_tasks as tasks
-import spirit_rotation
-import spirit_utils as utils
-from spirit_memory_interface import get_memory_client
+import core_logic as core
+import core_tasks as tasks
+import core_rotation
+import core_utils as utils
+import constants
+from core_memory_interface import get_memory_client
 
 
 # --- Team & Registry ---
 def get_team_registry(project_dir: str = ".") -> Dict[str, Any]:
-    """Load the team registry from .spirit/agents.json."""
-    agents_path = os.path.join(project_dir, ".spirit/agents.json")
+    """Load the team registry from agents.json."""
+    agents_path = os.path.join(project_dir, constants.AGENTS_REGISTRY)
     return core.load_json(agents_path, default={})
 
 
@@ -26,11 +28,11 @@ def send_message(
     subject: str = "No Subject",
     in_reply_to: Optional[str] = None,
 ) -> bool:
-    """Sends a message by writing it to the .spirit/outbox directory."""
-    outbox_dir = os.path.join(project_dir, ".spirit", "outbox")
+    """Sends a message by writing it to the outbox directory."""
+    outbox_dir = os.path.join(project_dir, constants.RESULTS_DIR)
     os.makedirs(outbox_dir, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now().strftime(constants.FILENAME_TIMESTAMP_FORMAT)
     microsecond = datetime.now().strftime("%f")
     filename = f"{timestamp}_{microsecond}_{agent_name}.txt"
     file_path = os.path.join(outbox_dir, filename)
@@ -49,17 +51,17 @@ def get_recent_messages(
     project_dir: str = ".",
 ) -> List[Dict[str, str]]:
     """
-    Retrieve the most recent messages from nb knowledge base.
+    Retrieve the most recent messages from knowledge base.
     Also includes human.txt from msgs_dir if enabled for legacy feedback.
     """
     results = []
 
-    # 1. Fetch from nb (Text-First Purity)
+    # 1. Fetch from knowledge base (Text-First Purity)
     try:
         notebook = core.get_notebook_name(project_dir)
         client = get_memory_client(notebook=notebook)
         # ls returns notes, we want newest first for 'recent'
-        notes = client.ls(tags=["type:message"], limit=count)
+        notes = client.ls(tags=[constants.TAG_MESSAGE], limit=count)
 
         def sort_key(note):
             try:
@@ -83,10 +85,10 @@ def get_recent_messages(
     if (
         include_human
         and msgs_dir
-        and os.path.exists(os.path.join(msgs_dir, "human.txt"))
+        and os.path.exists(os.path.join(msgs_dir, constants.HUMAN_INPUT_FILE))
     ):
         try:
-            content = core.read_file(os.path.join(msgs_dir, "human.txt"))
+            content = core.read_file(os.path.join(msgs_dir, constants.HUMAN_INPUT_FILE))
             if content:
                 # We put human input at the end (or beginning? usually end is more 'recent')
                 results.append({"filename": "human.txt", "content": content})
@@ -149,7 +151,7 @@ def get_vision(project_dir: str = ".") -> str:
             return lines[0]
 
     # 2. Try .project_goal file
-    goal_path = core.find_file_upwards(".project_goal", project_dir)
+    goal_path = core.find_file_upwards(constants.GOAL_FILE, project_dir)
     if goal_path and os.path.exists(goal_path):
         return core.read_file(goal_path).strip()
 
@@ -194,7 +196,7 @@ def get_note_content(query: str, project_dir: str = ".") -> Optional[str]:
                     note_id = notes[0].id
 
         if not note_id:
-            # 1. Search for the ID using 'nb spirit:q' which is the most reliable search for text
+            # 1. Search for the ID using 'nb system:q' which is the most reliable search for text
             notes = client.query(query)
             if notes:
                 note_id = notes[0].id
@@ -247,7 +249,7 @@ def parse_directives(dir_path: str) -> List[Dict[str, str]]:
         [
             f
             for f in os.listdir(dir_path)
-            if f.endswith((".txt", ".md")) and f != "README.md"
+            if f.endswith((".txt", ".md")) and f != constants.README_FILE
         ]
     )
 
@@ -270,7 +272,7 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
     Aggregates all relevant project status information into a single structure.
     Useful for both CLI status display and dashboard generation.
 
-    Context: [[nb:spirit:adr-62]]
+    Context: [[nb:knowledge:adr-62]]
     """
     try:
         tasks_data = tasks.parse_tasks()
@@ -288,13 +290,13 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
             },
         }
 
-    msgs_dir = os.path.join(project_dir, ".spirit/messages")
+    msgs_dir = os.path.join(project_dir, constants.COMMUNICATIONS_DIR)
 
     # Fetch ADRs
     adrs = utils.get_recent_adrs(5)
 
     # Fetch Milestones (from CHANGELOG.md)
-    changelog_path = core.find_file_upwards("CHANGELOG.md", project_dir)
+    changelog_path = core.find_file_upwards(constants.CHANGELOG_FILE, project_dir)
     milestones = []
     milestone_count = 0
     if changelog_path and os.path.exists(changelog_path):
@@ -368,20 +370,20 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
         "metrics": metrics,
         "git_status": core.get_git_status(project_dir),
         "nix_metadata": core.get_nix_metadata(project_dir),
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "timestamp": datetime.now().strftime(constants.DATETIME_FORMAT),
     }
 
 
 # --- Maintenance ---
 def initialize_infrastructure(project_dir: str) -> None:
-    """Ensures all required spirit infrastructure directories exist."""
+    """Ensures all required infrastructure directories exist."""
     infra_dirs = [
-        ".spirit/queues",
-        ".spirit/messages",
-        ".spirit/directives",
-        ".spirit/outbox",
-        ".spirit/messages/archive",
-        ".spirit/directives/archive",
+        constants.TASKS_DIR,
+        constants.COMMUNICATIONS_DIR,
+        constants.INSTRUCTIONS_DIR,
+        constants.RESULTS_DIR,
+        constants.ARCHIVE_COMMUNICATIONS_DIR,
+        constants.ARCHIVE_INSTRUCTIONS_DIR,
     ]
     for d in infra_dirs:
         os.makedirs(os.path.join(project_dir, d), exist_ok=True)
@@ -389,17 +391,17 @@ def initialize_infrastructure(project_dir: str) -> None:
 
 def consolidate_messages(project_dir: str) -> None:
     """Consolidates messages from agent outboxes into the nb knowledge base."""
-    outbox_dir = os.path.join(project_dir, ".spirit/outbox")
+    outbox_dir = os.path.join(project_dir, constants.RESULTS_DIR)
 
     if not os.path.exists(outbox_dir):
         return
 
     # Ensure NB environment variables for identity are respected
     env = os.environ.copy()
-    if "NB_USER_NAME" not in env:
-        env["NB_USER_NAME"] = "spirit System"
-    if "NB_USER_EMAIL" not in env:
-        env["NB_USER_EMAIL"] = "system@internal.spirit"
+    if constants.ENV_NB_USER_NAME not in env:
+        env[constants.ENV_NB_USER_NAME] = constants.DEFAULT_SYSTEM_NAME
+    if constants.ENV_NB_USER_EMAIL not in env:
+        env[constants.ENV_NB_USER_EMAIL] = constants.DEFAULT_SYSTEM_EMAIL
 
     notebook = core.get_notebook_name(project_dir)
     client = get_memory_client(notebook=notebook, env=env)
@@ -436,17 +438,17 @@ def consolidate_messages(project_dir: str) -> None:
 
 def consolidate_memory(project_dir: str) -> None:
     """Aggregates agent memory queues into the nb knowledge base."""
-    queues_dir = os.path.join(project_dir, ".spirit/queues")
+    queues_dir = os.path.join(project_dir, constants.TASKS_DIR)
 
     if not os.path.exists(queues_dir):
         return
 
     # Ensure NB environment variables for identity are respected
     env = os.environ.copy()
-    if "NB_USER_NAME" not in env:
-        env["NB_USER_NAME"] = "spirit System"
-    if "NB_USER_EMAIL" not in env:
-        env["NB_USER_EMAIL"] = "system@internal.spirit"
+    if constants.ENV_NB_USER_NAME not in env:
+        env[constants.ENV_NB_USER_NAME] = constants.DEFAULT_SYSTEM_NAME
+    if constants.ENV_NB_USER_EMAIL not in env:
+        env[constants.ENV_NB_USER_EMAIL] = constants.DEFAULT_SYSTEM_EMAIL
 
     client = get_memory_client(env=env)
 
@@ -481,7 +483,7 @@ def run_maintenance(project_dir: str) -> bool:
         initialize_infrastructure(project_dir)
         consolidate_messages(project_dir)
         consolidate_memory(project_dir)
-        spirit_rotation.perform_rotations(project_dir)
+        core_rotation.perform_rotations(project_dir)
         utils.generate_dashboard(project_dir=project_dir)
         core.log("Maintenance complete.", "Maintenance")
         return True
@@ -491,7 +493,7 @@ def run_maintenance(project_dir: str) -> bool:
 
 
 def discover_projects(root_dir: str) -> List[str]:
-    """Scans a root directory for spirit projects (directories containing .spirit/agents.json)."""
+    """Scans a root directory for Autonomous System projects (directories containing .system/agents.json)."""
     projects = []
     if not os.path.isdir(root_dir):
         return projects
@@ -499,6 +501,26 @@ def discover_projects(root_dir: str) -> List[str]:
     for item in os.listdir(root_dir):
         path = os.path.join(root_dir, item)
         if os.path.isdir(path):
-            if os.path.exists(os.path.join(path, ".spirit", "agents.json")):
+            if os.path.exists(os.path.join(path, constants.AGENTS_REGISTRY)):
                 projects.append(path)
     return projects
+
+def run_maintenance_all() -> bool:
+    """Discovers all projects in DISCOVERY_ROOT and runs maintenance on each."""
+    root_dir = os.environ.get(constants.ENV_DISCOVERY_ROOT)
+    if not root_dir:
+        print("Error: --all requires DISCOVERY_ROOT environment variable to be set.")
+        sys.exit(1)
+
+    projects = discover_projects(root_dir)
+    if not projects:
+        print(f"No projects discovered in {root_dir}")
+        return True
+
+    print(f"Discovered {len(projects)} projects for maintenance.")
+    success = True
+    for project in projects:
+        core.log(f"Maintaining project: {project}", "Maintenance")
+        if not run_maintenance(project):
+            success = False
+    return success

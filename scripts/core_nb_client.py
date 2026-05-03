@@ -1,4 +1,4 @@
-# Context: [[nb:spirit:adr-57]]
+# Context: [[nb:knowledge:adr-57]]
 import os
 import subprocess
 import re
@@ -6,9 +6,10 @@ import json
 import time
 from typing import List, Optional, Dict
 from concurrent.futures import ThreadPoolExecutor
-import spirit_core as core
+import core_logic as core
+import constants
 
-from spirit_memory_interface import MemoryInterface, MemoryNote
+from core_memory_interface import MemoryInterface, MemoryNote
 
 
 class NbClient(MemoryInterface):
@@ -24,7 +25,7 @@ class NbClient(MemoryInterface):
     _cache = {}
     _id_to_filename = {}
     _notebook_path_cache = {}
-    _persistent_cache_file = ".spirit/nb_cache.json"
+    _persistent_cache_file = constants.CACHE_FILE
 
     @classmethod
     def clear_cache(cls):
@@ -52,7 +53,7 @@ class NbClient(MemoryInterface):
         import tempfile
 
         # Mock 'less' if missing
-        self._tmp_dir = tempfile.TemporaryDirectory(prefix="spirit_bin_")
+        self._tmp_dir = tempfile.TemporaryDirectory(prefix="core_bin_")
         tmp_bin = self._tmp_dir.name
         less_path = os.path.join(tmp_bin, "less")
         if not os.path.exists(less_path):
@@ -76,8 +77,8 @@ class NbClient(MemoryInterface):
 
         try:
             # 1. Try NB_NOTEBOOK_PATH env var
-            if "NB_NOTEBOOK_PATH" in self.env:
-                path = self.env["NB_NOTEBOOK_PATH"]
+            if constants.ENV_NB_NOTEBOOK_PATH in self.env:
+                path = self.env[constants.ENV_NB_NOTEBOOK_PATH]
                 NbClient._notebook_path_cache[self.notebook] = path
                 return path
 
@@ -137,7 +138,7 @@ class NbClient(MemoryInterface):
 
     def _run(self, args: List[str]) -> subprocess.CompletedProcess:
         """Helper to run nb commands."""
-        nb_bin = self.env.get("NB_BIN", "nb")
+        nb_bin = self.env.get(constants.ENV_NB_BIN, "nb")
         return subprocess.run(
             [nb_bin, "--no-color"] + args,
             capture_output=True,

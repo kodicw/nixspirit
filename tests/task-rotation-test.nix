@@ -1,9 +1,9 @@
 {
   pkgs,
-  jbot-cli-py,
+  core-cli-py,
   ...
 }:
-pkgs.runCommand "jbot-task-rotation-test"
+pkgs.runCommand "core-task-rotation-test"
   {
     nativeBuildInputs = [
       pkgs.python3
@@ -37,8 +37,8 @@ pkgs.runCommand "jbot-task-rotation-test"
         done
 
         # Run rotation via CLI with limit 5
-        export PYTHONPATH=$PYTHONPATH:${dirOf jbot-cli-py}
-        python3 ${jbot-cli-py} rotate tasks --limit 5
+        export PYTHONPATH=$PYTHONPATH:${dirOf core-cli-py}
+        python3 ${core-cli-py} rotate tasks --limit 5
 
         # Verifications
         echo "Verifying task rotation..."

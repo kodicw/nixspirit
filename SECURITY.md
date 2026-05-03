@@ -16,10 +16,10 @@ We take the security of our infrastructure-as-code and system configurations ser
 ### Scope
 
 The following are within the scope of our security policy:
-- Vulnerabilities in the JBot NixOS module (`jbot.nix`).
+- Vulnerabilities in the Core NixOS module (`core.nix`).
 - Insecure defaults or privilege escalation paths in the systemd service.
 - Exposed secrets or insecure secret handling in the prompt injection script.
-- Flaws in the `jbot_prompt.txt` that could lead to unintended command execution.
+- Flaws in the `system_prompt.txt` that could lead to unintended command execution.
 
 ### Reporting Process
 

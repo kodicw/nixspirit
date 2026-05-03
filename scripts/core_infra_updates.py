@@ -1,9 +1,9 @@
-# Context: [[nb:spirit:adr-6]]
+# Context: [[nb:knowledge:adr-6]]
 import os
 import subprocess
 from datetime import datetime
-import spirit_core as core
-import spirit_infra as infra
+import core_logic as core
+import core_infra as infra
 
 
 def run_command(cmd, project_dir="."):
@@ -117,7 +117,7 @@ def generate_infra_pr(project_dir="."):
     )
     infra.send_message(project_dir, "lead", body, subject)
     core.log(
-        "Infrastructure update 'PR' generated and notification sent.", "InfraUpdate"
+        "Infrastructure update generated and notification sent.", "InfraUpdate"
     )
 
     # Switch back to main branch

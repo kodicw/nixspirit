@@ -1,11 +1,12 @@
-# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-62]], [[nb:spirit:adr-66]]
+# Context: [[nb:knowledge:adr-2]], [[nb:knowledge:adr-62]], [[nb:knowledge:adr-66]]
 import os
 import json
 import subprocess
 import time
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
-import spirit_core as core
+import core_logic as core
+import constants
 
 
 class AiInterface(ABC):
@@ -24,7 +25,7 @@ class AiInterface(ABC):
         """Executes the AI CLI and streams output with a mandatory 2s cooldown."""
         # 1. Enforce Global Rate Limit (2s between requests)
         project_root = os.getcwd()
-        lock_dir = os.path.join(project_root, ".spirit/locks")
+        lock_dir = os.path.join(project_root, constants.STATE_DIR, "locks")
         os.makedirs(lock_dir, exist_ok=True)
         lock_file = os.path.join(lock_dir, "api.lock")
 

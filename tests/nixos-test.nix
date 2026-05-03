@@ -1,7 +1,7 @@
 {
   pkgs,
   home-manager,
-  jbot-module,
+  core-module,
   ...
 }:
 let
@@ -28,7 +28,7 @@ let
   '';
 in
 pkgs.testers.nixosTest {
-  name = "jbot-test";
+  name = "core-test";
   nodes.machine = _: {
     imports = [ home-manager.nixosModules.home-manager ];
 
@@ -43,8 +43,8 @@ pkgs.testers.nixosTest {
       users.testuser =
         { ... }:
         {
-          imports = [ jbot-module ];
-          programs.jbot = {
+          imports = [ core-module ];
+          programs.system = {
             enable = true;
             agents = {
               ceo = {
@@ -82,31 +82,31 @@ pkgs.testers.nixosTest {
 
   testScript = ''
     machine.wait_for_unit("home-manager-testuser.service")
-    machine.wait_until_succeeds("systemctl --user -M testuser status jbot-agent-ceo.timer")
-    machine.wait_until_succeeds("systemctl --user -M testuser status jbot-agent-dev.timer")
-    machine.wait_until_succeeds("systemctl --user -M testuser status jbot-agent-qa.timer")
+    machine.wait_until_succeeds("systemctl --user -M testuser status core-agent-ceo.timer")
+    machine.wait_until_succeeds("systemctl --user -M testuser status core-agent-dev.timer")
+    machine.wait_until_succeeds("systemctl --user -M testuser status core-agent-qa.timer")
 
     # Check if the service file contains the expected sandboxing
-    machine.succeed("systemctl --user -M testuser cat jbot-agent-dev.service | grep ProtectSystem=strict")
-    machine.succeed("systemctl --user -M testuser cat jbot-agent-dev.service | grep PrivateTmp=true")
-    machine.succeed("systemctl --user -M testuser cat jbot-agent-dev.service | grep PrivateDevices=true")
-    machine.succeed("systemctl --user -M testuser cat jbot-maintenance.service | grep ProtectSystem=strict")
-    machine.succeed("systemctl --user -M testuser cat jbot-knowledge-base.service | grep ProtectSystem=strict")
+    machine.succeed("systemctl --user -M testuser cat core-agent-dev.service | grep ProtectSystem=strict")
+    machine.succeed("systemctl --user -M testuser cat core-agent-dev.service | grep PrivateTmp=true")
+    machine.succeed("systemctl --user -M testuser cat core-agent-dev.service | grep PrivateDevices=true")
+    machine.succeed("systemctl --user -M testuser cat core-maintenance.service | grep ProtectSystem=strict")
+    machine.succeed("systemctl --user -M testuser cat core-knowledge-base.service | grep ProtectSystem=strict")
 
     # Initial setup
     machine.succeed("mkdir -p /home/testuser/project")
     machine.succeed("echo 'Test Goal' > /home/testuser/project/.project_goal")
-    machine.succeed("cp ${../jbot_prompt.txt} /home/testuser/project/jbot_prompt.txt")
+    machine.succeed("cp ${../system_prompt.txt} /home/testuser/project/system_prompt.txt")
     machine.succeed("echo '# Task Board' > /home/testuser/project/TASKS.md")
     machine.succeed("chown -R testuser:users /home/testuser/project")
 
     # Start the CEO agent
-    machine.succeed("systemctl --user -M testuser start jbot-agent-ceo.service")
+    machine.succeed("systemctl --user -M testuser start core-agent-ceo.service")
     machine.wait_until_succeeds("test -f /home/testuser/project/.test_prompt_ceo")
     machine.succeed("grep 'You are ceo, acting as CEO' /home/testuser/project/.test_prompt_ceo")
 
     # Start the Dev agent
-    machine.succeed("systemctl --user -M testuser start jbot-agent-dev.service")
+    machine.succeed("systemctl --user -M testuser start core-agent-dev.service")
     machine.wait_until_succeeds("test -f /home/testuser/project/.test_prompt_dev")
 
     # Verify Dev agent prompt contains its name and role
@@ -114,29 +114,29 @@ pkgs.testers.nixosTest {
     machine.succeed("grep '# Task Board' /home/testuser/project/.test_prompt_dev")
 
     # Wait for Dev to finish. It should NOT create memory.log directly ()
-    machine.wait_until_succeeds("! systemctl --user -M testuser is-active jbot-agent-dev.service")
-    machine.fail("test -f /home/testuser/project/.jbot/memory.log")
-    machine.succeed("test -f /home/testuser/project/.jbot/queues/dev.json")
+    machine.wait_until_succeeds("! systemctl --user -M testuser is-active core-agent-dev.service")
+    machine.fail("test -f /home/testuser/project/.system/memory.log")
+    machine.succeed("test -f /home/testuser/project/.system/queues/dev.json")
 
     # Now run maintenance to consolidate memory
-    machine.succeed("systemctl --user -M testuser start jbot-maintenance.service")
-    machine.wait_until_succeeds("! systemctl --user -M testuser is-active jbot-maintenance.service")
+    machine.succeed("systemctl --user -M testuser start core-maintenance.service")
+    machine.wait_until_succeeds("! systemctl --user -M testuser is-active core-maintenance.service")
 
     # Verify memory consolidation happened
-    machine.succeed("test -f /home/testuser/project/.jbot/memory.log")
-    machine.succeed("grep '\"agent\": \"dev\"' /home/testuser/project/.jbot/memory.log")
-    machine.fail("test -f /home/testuser/project/.jbot/queues/dev.json")
+    machine.succeed("test -f /home/testuser/project/.system/memory.log")
+    machine.succeed("grep '\"agent\": \"dev\"' /home/testuser/project/.system/memory.log")
+    machine.fail("test -f /home/testuser/project/.system/queues/dev.json")
 
     # Start the QA agent
-    machine.succeed("systemctl --user -M testuser start jbot-agent-qa.service")
+    machine.succeed("systemctl --user -M testuser start core-agent-qa.service")
     machine.wait_until_succeeds("test -f /home/testuser/project/.test_prompt_qa")
 
     # Verify QA agent prompt contains dev memory in Shared History
     machine.succeed("grep '\[dev\] Mock agent ran' /home/testuser/project/.test_prompt_qa")
 
-    # Verify jbot CLI
-    machine.wait_until_succeeds("sudo -u testuser jbot status -d /home/testuser/project | grep 'JBot Organization Status'")
-    machine.wait_until_succeeds("sudo -u testuser jbot tasks -d /home/testuser/project | grep 'JBot Task Board'")
-    machine.wait_until_succeeds("sudo -u testuser jbot messages -d /home/testuser/project")
+    # Verify core CLI
+    machine.wait_until_succeeds("sudo -u testuser core status -d /home/testuser/project | grep 'Autonomous System Organization Status'")
+    machine.wait_until_succeeds("sudo -u testuser core tasks -d /home/testuser/project | grep 'Autonomous System Task Board'")
+    machine.wait_until_succeeds("sudo -u testuser core messages -d /home/testuser/project")
   '';
 }

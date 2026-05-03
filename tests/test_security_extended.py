@@ -14,7 +14,7 @@ def has_bwrap():
 @pytest.mark.skipif(not has_bwrap(), reason="bubblewrap not available")
 def test_bwrap_sandbox_isolation(tmp_path):
     """
-    Verifies that a simple bwrap sandbox (similar to what jbot uses)
+    Verifies that a simple bwrap sandbox (similar to what core uses)
     actually restricts write access.
     """
     project_dir = tmp_path / "project"
@@ -24,7 +24,7 @@ def test_bwrap_sandbox_isolation(tmp_path):
     secret_file.write_text("sensitive data")
 
     # Attempt to write to a file outside the sandbox
-    # Using similar flags to jbot-launcher.sh
+    # Using similar flags to launcher.sh
     try:
         subprocess.run(
             [

@@ -1,6 +1,6 @@
 import os
 from unittest.mock import patch, MagicMock
-import jbot_utils as utils
+import core_utils as utils
 
 # Ensure scripts directory is in sys.path
 import sys
@@ -27,7 +27,7 @@ def test_is_directive_expired():
 
 
 def test_update_note_stably(tmp_path):
-    with patch("jbot_utils.get_memory_client") as mock_client:
+    with patch("core_utils.get_memory_client") as mock_client:
         mock_client.return_value.ls.return_value = [
             MagicMock(id="1", title="Existing Note")
         ]
@@ -45,7 +45,7 @@ def test_update_note_stably(tmp_path):
 
 
 def test_get_recent_adrs():
-    with patch("jbot_utils.get_memory_client") as mock_client:
+    with patch("core_utils.get_memory_client") as mock_client:
         mock_client.return_value.ls.return_value = [
             MagicMock(id="2", title="ADR 2"),
             MagicMock(id="1", title="ADR 1"),
@@ -58,7 +58,7 @@ def test_get_recent_adrs():
 def test_generate_dashboard_basic(tmp_path):
     # Test overall dashboard generation
     with patch(
-        "jbot_infra.get_project_summary",
+        "core_infra.get_project_summary",
         return_value={
             "vision": "Test Vision",
             "team": {"ceo": {"role": "CEO", "description": "Desc"}},
@@ -84,7 +84,7 @@ def test_generate_dashboard_basic(tmp_path):
     ):
         utils.generate_dashboard("INDEX.md", str(tmp_path))
         content = (tmp_path / "INDEX.md").read_text()
-        assert "# JBot Dashboard" in content
+        assert "# Autonomous System Dashboard" in content
         assert "Test Vision" in content
         assert "ceo | CEO" in content
         assert "Task 1" in content
@@ -93,7 +93,7 @@ def test_generate_dashboard_basic(tmp_path):
 
 def test_generate_dashboard_no_vision(tmp_path):
     with patch(
-        "jbot_infra.get_project_summary",
+        "core_infra.get_project_summary",
         return_value={
             "vision": "No current vision defined.",
             "team": {},
@@ -120,7 +120,7 @@ def test_generate_dashboard_no_vision(tmp_path):
 def test_generate_dashboard_messages(tmp_path):
     # Test message display in dashboard
     with patch(
-        "jbot_infra.get_project_summary",
+        "core_infra.get_project_summary",
         return_value={
             "vision": "V",
             "team": {},
@@ -148,8 +148,8 @@ def test_generate_dashboard_messages(tmp_path):
 
 def test_generate_dashboard_error(tmp_path):
     with patch(
-        "jbot_infra.get_project_summary", side_effect=Exception("Summary Error")
+        "core_infra.get_project_summary", side_effect=Exception("Summary Error")
     ):
         utils.generate_dashboard("INDEX.md", str(tmp_path))
         content = (tmp_path / "INDEX.md").read_text()
-        assert "# JBot Dashboard" in content
+        assert "# Autonomous System Dashboard" in content

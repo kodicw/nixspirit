@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_core as core
+import core_logic as core
 
 
 def test_log(capsys):
@@ -141,7 +141,7 @@ def test_versioning(tmp_path):
     assert core.bump_version(str(tmp_path), "patch") is None
     version_file.write_text("1.0.0")
     assert core.bump_version(str(tmp_path), "invalid") is None
-    with patch("jbot_core.write_file", return_value=False):
+    with patch("core_logic.write_file", return_value=False):
         assert core.bump_version(str(tmp_path), "patch") is None
 
 
@@ -165,23 +165,23 @@ def test_update_changelog(tmp_path):
 
 def test_get_notebook_name():
     # Test line 53 (env var)
-    with patch.dict(os.environ, {"JBOT_NOTEBOOK": "env-nb"}):
+    with patch.dict(os.environ, {"CORE_NOTEBOOK": "env-nb"}):
         assert core.get_notebook_name() == "env-nb"
 
     # Test line 58-61 (local file)
-    with patch("jbot_core.get_project_root", return_value="/tmp/proj"):
+    with patch("core_logic.get_project_root", return_value="/tmp/proj"):
         with patch("os.path.exists", return_value=True):
-            with patch("jbot_core.read_file", return_value="file-nb"):
+            with patch("core_logic.read_file", return_value="file-nb"):
                 assert core.get_notebook_name() == "file-nb"
 
     # Test line 64 (basename fallback)
-    with patch("jbot_core.get_project_root", return_value="/tmp/proj"):
+    with patch("core_logic.get_project_root", return_value="/tmp/proj"):
         with patch("os.path.exists", return_value=False):
             assert core.get_notebook_name() == "proj"
 
     # Final fallback if root is empty
-    with patch("jbot_core.get_project_root", return_value=""):
-        assert core.get_notebook_name() == "jbot"
+    with patch("core_logic.get_project_root", return_value=""):
+        assert core.get_notebook_name() == "knowledge"
 
 
 def test_init_git_success():

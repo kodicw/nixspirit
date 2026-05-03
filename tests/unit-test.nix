@@ -1,7 +1,7 @@
 {
   pkgs,
-  jbot-scripts,
-  jbot_prompt_txt,
+  core-scripts,
+  system_prompt.txt,
   ...
 }:
 let
@@ -22,7 +22,7 @@ let
     echo '{"scope": "local", "status": "success", "summary": "Mock unit test success"}' > "$MEMORY_OUTPUT"
   '';
 in
-pkgs.runCommand "jbot-unit-test"
+pkgs.runCommand "core-unit-test"
   {
     nativeBuildInputs = [
       pkgs.python3
@@ -38,27 +38,27 @@ pkgs.runCommand "jbot-unit-test"
     cd $PROJECT_DIR
 
     # Initial files
-    ln -s ${jbot-scripts} scripts
+    ln -s ${core-scripts} scripts
 
     echo "Goal: Test the unit test" > .project_goal
     echo "# Task Board" > TASKS.md
     echo "- [x] Task 1" >> TASKS.md
 
-    mkdir -p .jbot/directives
-    echo "This is a test directive" > .jbot/directives/001_test.txt
-    mkdir -p .jbot
-    echo '{"dev": {"role": "Lead", "description": "Lead Dev", "projectDir": "'$PROJECT_DIR'"}}' > .jbot/agents.json
+    mkdir -p .system/directives
+    echo "This is a test directive" > .system/directives/001_test.txt
+    mkdir -p .system
+    echo '{"dev": {"role": "Lead", "description": "Lead Dev", "projectDir": "'$PROJECT_DIR'"}}' > .system/agents.json
 
     export AGENT_NAME="dev"
     export AGENT_ROLE="Lead"
     export AGENT_DESCRIPTION="Lead Dev"
     export PROJECT_DIR="$PROJECT_DIR"
-    export PROMPT_FILE="${jbot_prompt_txt}"
+    export PROMPT_FILE="${system_prompt.txt}"
     export GEMINI_PACKAGE="gemini"
-    export MEMORY_OUTPUT=".jbot/queues/dev.json"
+    export MEMORY_OUTPUT=".system/queues/dev.json"
     export PYTHONPATH=$PYTHONPATH:$(pwd)/scripts
 
-    python3 scripts/jbot-cli.py agent
+    python3 scripts/core_cli.py agent
 
     # Verifications for 
     if ! grep -q "You are dev, acting as Lead" .prompt_received; then
@@ -71,7 +71,7 @@ pkgs.runCommand "jbot-unit-test"
       exit 1
     fi
 
-    if [ ! -f .jbot/queues/dev.json ]; then
+    if [ ! -f .system/queues/dev.json ]; then
       echo "Error: Memory output not created in queue"
       exit 1
     fi
@@ -83,20 +83,20 @@ pkgs.runCommand "jbot-unit-test"
 
     # Run Maintenance (Centralized CLI)
     export PYTHONPATH=$PYTHONPATH:$(pwd)/scripts
-    python3 scripts/jbot-cli.py maintenance
+    python3 scripts/core_cli.py maintenance
 
     # Verifications for Maintenance
-    if [ ! -f .jbot/memory.log ]; then
+    if [ ! -f .system/memory.log ]; then
       echo "Error: memory.log not created by maintenance"
       exit 1
     fi
 
-    if ! grep -q "Mock unit test success" .jbot/memory.log; then
+    if ! grep -q "Mock unit test success" .system/memory.log; then
       echo "Error: Memory not consolidated into memory.log"
       exit 1
     fi
 
-    if [ -f .jbot/queues/dev.json ]; then
+    if [ -f .system/queues/dev.json ]; then
       echo "Error: Queue file not removed after consolidation"
       exit 1
     fi
@@ -106,7 +106,7 @@ pkgs.runCommand "jbot-unit-test"
       exit 1
     fi
 
-    if ! grep -q "JBot Dashboard" INDEX.md; then
+    if ! grep -q "Autonomous System Dashboard" INDEX.md; then
       echo "Error: INDEX.md content incorrect"
       exit 1
     fi

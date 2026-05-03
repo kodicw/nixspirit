@@ -1,11 +1,12 @@
-# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-6]], [[nb:spirit:adr-57]]
+# Context: [[nb:knowledge:adr-2]], [[nb:knowledge:adr-6]], [[nb:knowledge:adr-57]]
 import os
 import shutil
 from datetime import datetime
 
-import spirit_core as core
-import spirit_utils as utils
-from spirit_memory_interface import get_memory_client
+import core_logic as core
+import core_utils as utils
+import constants
+from core_memory_interface import get_memory_client
 
 
 def purge_directives(dir_path: str, archive_path: str) -> int:
@@ -20,7 +21,7 @@ def purge_directives(dir_path: str, archive_path: str) -> int:
     dir_files = [
         f
         for f in os.listdir(dir_path)
-        if f.endswith((".txt", ".md")) and f != "README.md"
+        if f.endswith((".txt", ".md")) and f != constants.README_FILE
     ]
 
     for df in dir_files:
@@ -36,7 +37,7 @@ def purge_directives(dir_path: str, archive_path: str) -> int:
             if utils.is_directive_expired(directive_content, df):
                 dest_path = os.path.join(archive_path, df)
                 if os.path.exists(dest_path):
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now().strftime(constants.ROTATION_TIMESTAMP_FORMAT)
                     name, ext = os.path.splitext(df)
                     dest_path = os.path.join(archive_path, f"{name}_{timestamp}{ext}")
                 shutil.move(df_path, dest_path)
@@ -56,7 +57,7 @@ def rotate_messages(msg_dir: str, archive_dir: str, limit: int = 50) -> bool:
         [
             f
             for f in os.listdir(msg_dir)
-            if os.path.isfile(os.path.join(msg_dir, f)) and f != "human.txt"
+            if os.path.isfile(os.path.join(msg_dir, f)) and f != constants.HUMAN_INPUT_FILE
         ]
     )
     if len(msg_files) <= limit:
@@ -69,7 +70,7 @@ def rotate_messages(msg_dir: str, archive_dir: str, limit: int = 50) -> bool:
 
 
 def rotate_nb_notes(tag: str, limit: int = 5, preserve_ids: list = None) -> int:
-    """Rotates old notes in nb knowledge base by tag."""
+    """Rotates old notes in knowledge base by tag."""
     client = get_memory_client()
     # Use ls instead of query for cleaner, tag-specific results
     notes = client.ls(tags=[tag])
@@ -104,22 +105,22 @@ def rotate_nb_notes(tag: str, limit: int = 5, preserve_ids: list = None) -> int:
 def perform_rotations(project_dir: str) -> None:
     """Executes all automated data purging and rotation tasks."""
     purge_directives(
-        os.path.join(project_dir, ".spirit/directives"),
-        os.path.join(project_dir, ".spirit/directives/archive"),
+        os.path.join(project_dir, constants.INSTRUCTIONS_DIR),
+        os.path.join(project_dir, constants.ARCHIVE_INSTRUCTIONS_DIR),
     )
 
     # Memory and tasks are now handled by nb.
-    rotate_nb_notes("type:tasks", limit=3, preserve_ids=["198", "5"])
-    rotate_nb_notes("type:audit", limit=3)
-    rotate_nb_notes("type:idea", limit=5)
-    rotate_nb_notes("input:human", limit=10)
-    rotate_nb_notes("type:adr", limit=50)
-    rotate_nb_notes("type:research", limit=20)
-    rotate_nb_notes("type:benchmarks", limit=20)
-    rotate_nb_notes("status:completed", limit=20)
-    rotate_nb_notes("memory", limit=50)
+    rotate_nb_notes(constants.TAG_TASKS_BOARD, limit=3, preserve_ids=["198", "5"])
+    rotate_nb_notes(constants.TAG_AUDIT, limit=3)
+    rotate_nb_notes(constants.TAG_IDEA, limit=5)
+    rotate_nb_notes(constants.TAG_HUMAN, limit=10)
+    rotate_nb_notes(constants.TAG_ADR, limit=50)
+    rotate_nb_notes(constants.TAG_RESEARCH, limit=20)
+    rotate_nb_notes(constants.TAG_BENCHMARKS, limit=20)
+    rotate_nb_notes(constants.STATUS_COMPLETED, limit=20)
+    rotate_nb_notes(constants.TAG_MEMORY, limit=50)
 
     rotate_messages(
-        os.path.join(project_dir, ".spirit/messages"),
-        os.path.join(project_dir, ".spirit/messages/archive"),
+        os.path.join(project_dir, constants.COMMUNICATIONS_DIR),
+        os.path.join(project_dir, constants.ARCHIVE_COMMUNICATIONS_DIR),
     )

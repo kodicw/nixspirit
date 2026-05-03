@@ -1,9 +1,10 @@
-# Context: [[nb:spirit:adr-57]], [[nb:spirit:adr-2]], [[nb:spirit:adr-62]], [[nb:spirit:adr-66]]
+# Context: [[nb:knowledge:adr-57]], [[nb:knowledge:adr-2]], [[nb:knowledge:adr-62]], [[nb:knowledge:adr-66]]
 import re
 from typing import Dict, Any, Optional, List
 
-import spirit_core as core
-from spirit_memory_interface import get_memory_client
+import core_logic as core
+import constants
+from core_memory_interface import get_memory_client
 
 
 def _get_granular_tasks() -> List[Dict[str, Any]]:
@@ -12,8 +13,9 @@ def _get_granular_tasks() -> List[Dict[str, Any]]:
     tasks_list = []
 
     # Fetch tasks by status to avoid listing everything
-    for status in ["active", "backlog", "completed", "proposal"]:
-        notes = client.ls(tags=["type:task", f"status:{status}"])
+    for status_suffix in ["active", "backlog", "completed", "proposal"]:
+        status_tag = f"status:{status_suffix}"
+        notes = client.ls(tags=[constants.TAG_TASK, status_tag])
 
         for note in notes:
             # Exclude notes that are clearly not individual tasks
@@ -37,7 +39,7 @@ def _get_granular_tasks() -> List[Dict[str, Any]]:
                     "id": note.id,
                     "title": note.title,
                     "content": content,
-                    "status": status,
+                    "status": status_suffix,
                     "agent": agent,
                 }
             )
@@ -53,12 +55,12 @@ def _get_granular_tasks() -> List[Dict[str, Any]]:
 
 
 def parse_tasks() -> Dict[str, Any]:
-    """Parses granular tasks from nb.
+    """Parses granular tasks from knowledge base.
 
-    Context: [[nb:spirit:57]] - Per-Task Note Model
+    Context: [[nb:knowledge:57]] - Per-Task Note Model
     """
     # 1. Fetch Strategic Vision
-    import spirit_infra as infra
+    import core_infra as infra
 
     vision = infra.get_vision()
 
@@ -101,9 +103,9 @@ def parse_tasks() -> Dict[str, Any]:
 
     # 3. Fallback to old Authoritative Task Board if granular tasks are empty
     if not tasks_list:
-        import spirit_infra as infra
+        import core_infra as infra
 
-        old_tasks = infra.get_note_content("type:tasks")
+        old_tasks = infra.get_note_content(constants.TAG_TASKS_BOARD)
         if old_tasks:
             # Re-use simplified old parsing logic for migration/compatibility
             lines = old_tasks.splitlines(keepends=True)
@@ -147,11 +149,11 @@ def add_task(
     """Adds a new granular task as an nb note."""
     client = get_memory_client()
 
-    status_tag = "status:active"
+    status_tag = constants.STATUS_ACTIVE
     if backlog:
-        status_tag = "status:backlog"
+        status_tag = constants.STATUS_BACKLOG
     elif proposal:
-        status_tag = "status:proposal"
+        status_tag = constants.STATUS_PROPOSAL
 
     content = f"Status: {status_tag}\n"
     if agent:
@@ -224,7 +226,7 @@ def complete_task(task_text_search: str) -> bool:
         )
         return False
 
-    status_tag = "status:completed"
+    status_tag = constants.STATUS_COMPLETED
     content = target_task["content"]
     content = re.sub(r"status:(active|backlog)", status_tag, content)
 
@@ -238,7 +240,7 @@ def complete_task(task_text_search: str) -> bool:
 def get_task_board_markdown() -> str:
     """Returns the aggregated task board as a markdown string.
 
-    Context: [[nb:spirit:adr-2]]
+    Context: [[nb:knowledge:adr-2]]
     """
     data = parse_tasks()
     output = []

@@ -5,7 +5,7 @@ import os
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
 
-from nb_client import NbClient
+from core_nb_client import NbClient
 
 
 @pytest.fixture(autouse=True)

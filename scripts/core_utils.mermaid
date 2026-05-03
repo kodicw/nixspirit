@@ -1,5 +1,5 @@
 graph TD
-    UTILS[spirit_utils.py] --> UNS[update_note_stably]
+    UTILS[core_utils.py] --> UNS[update_note_stably]
     UTILS --> ADR[get_recent_adrs]
     UTILS --> EXP[Expiration Logic]
     UTILS --> DASH[generate_dashboard]
@@ -11,11 +11,11 @@ graph TD
     end
 
     subgraph "Dashboard Generation"
-        DASH --> infra[spirit_infra: get_project_summary]
+        DASH --> infra[core_infra: get_project_summary]
         DASH --> MER[Embed Mermaid Diagrams]
         DASH --> TASK[Format Task Board]
         DASH --> MSG[Format Messages]
     end
 
-    UNS --> mem[spirit_memory_interface]
+    UNS --> mem[core_memory_interface]
     ADR --> mem

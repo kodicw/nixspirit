@@ -1,7 +1,15 @@
-_: {
-  programs.nixspirit = {
+{ lib, ... }:
+let
+  constants = import ./constants.nix { inherit lib; };
+  namespace = constants.namespace;
+  projectDir = "/home/kodicw/code/jbot";
+  defaultModel = "gemini-1.5-pro";
+  workerModel = "gemini-1.5-flash";
+in
+{
+  programs.${namespace} = {
     enable = true;
-    projectDir = "/home/kodicw/code/jbot";
+    inherit projectDir;
 
     agents = {
       # --- spirit Hierarchical Specialist Organization ---
@@ -10,7 +18,7 @@ _: {
         enable = true;
         role = "Managerial Lead";
         description = "Orchestrator and task delegator. Decomposes high-level goals into sub-tasks for specialized agents using the nb task board.";
-        model = "gemini-1.5-pro";
+        model = defaultModel;
         interval = "hourly";
       };
 
@@ -18,7 +26,7 @@ _: {
         enable = true;
         role = "System Architect";
         description = "High-level design and ADR maintenance. Translates complex requirements into actionable technical plans.";
-        model = "gemini-1.5-pro"; # High-reasoning for design
+        model = defaultModel;
         interval = "*-*-* 00/2:00:00";
         dependsOn = [ "lead" ];
       };
@@ -27,7 +35,7 @@ _: {
         enable = true;
         role = "Security Auditor";
         description = "Compliance and security gatekeeper. Audits all code changes and sandbox constraints.";
-        model = "gemini-1.5-flash";
+        model = workerModel;
         interval = "*-*-* 00/4:00:00";
         dependsOn = [ "lead" ];
       };
@@ -36,7 +44,7 @@ _: {
         enable = true;
         role = "Implementation Engineer";
         description = "Core developer. Executes code changes, refactoring, and feature implementation delegated by the Lead.";
-        model = "gemini-1.5-flash";
+        model = workerModel;
         interval = "*-*-* 00/2:00:00";
         dependsOn = [ "architect" ];
       };
@@ -45,7 +53,7 @@ _: {
         enable = true;
         role = "QA Engineer";
         description = "Test automation and verification. Ensures 100% pass rate and reports regressions.";
-        model = "gemini-1.5-flash";
+        model = workerModel;
         interval = "*-*-* 00/2:00:00";
         dependsOn = [ "engineer" ];
       };
@@ -54,7 +62,7 @@ _: {
         enable = true;
         role = "Research Specialist";
         description = "Information gathering and documentation. Monitors the ecosystem and maintains the knowledge base.";
-        model = "gemini-1.5-flash";
+        model = workerModel;
         interval = "daily";
         dependsOn = [ "lead" ];
       };

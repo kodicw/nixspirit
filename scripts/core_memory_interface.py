@@ -1,4 +1,4 @@
-# Context: [[nb:spirit:adr-57]]
+# Context: [[nb:knowledge:adr-57]]
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from dataclasses import dataclass
@@ -15,7 +15,7 @@ class MemoryNote:
 
 class MemoryInterface(ABC):
     """
-    Abstract Base Class for spirit memory backends.
+    Abstract Base Class for memory backends.
     """
 
     @abstractmethod
@@ -87,7 +87,7 @@ def get_memory_client(backend: str = "nb", **kwargs) -> MemoryInterface:
         return _client_cache[cache_key]
 
     if backend == "nb":
-        from nb_client import NbClient
+        from core_nb_client import NbClient
 
         client = NbClient(**kwargs)
         _client_cache[cache_key] = client

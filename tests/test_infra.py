@@ -6,20 +6,20 @@ from unittest.mock import patch, MagicMock
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_infra as infra
-import jbot_utils as utils
+import core_infra as infra
+import core_utils as utils
 
 
 def test_get_team_registry(tmp_path):
-    jbot_dir = tmp_path / ".jbot"
-    jbot_dir.mkdir()
-    agents_file = jbot_dir / "agents.json"
+    system_dir = tmp_path / ".system"
+    system_dir.mkdir()
+    agents_file = system_dir / "agents.json"
     data = {"agent1": {"role": "Tester"}}
     agents_file.write_text(json.dumps(data))
     assert infra.get_team_registry(str(tmp_path)) == data
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_messages(mock_nb, tmp_path):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -52,7 +52,7 @@ def test_get_recent_messages(mock_nb, tmp_path):
     assert results[0]["filename"] == "nb:133"
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_logs(mock_nb):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -68,7 +68,7 @@ def test_get_recent_logs(mock_nb):
     assert logs[1]["agent"] == "a2"
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_logs_exception(mock_nb):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -90,10 +90,10 @@ def test_parse_directives(tmp_path):
     assert "002_active.txt" in filenames
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_generate_dashboard(mock_nb, tmp_path):
     (tmp_path / ".project_goal").write_text("Vision")
-    # Dashboard uses jbot_tasks.parse_tasks now, so we might need to mock it if we want full isolation,
+    # Dashboard uses core_tasks.parse_tasks now, so we might need to mock it if we want full isolation,
     # but for now we'll just let it run.
     utils.generate_dashboard("INDEX.md", str(tmp_path))
     assert "Vision" in (tmp_path / "INDEX.md").read_text()
@@ -102,25 +102,25 @@ def test_generate_dashboard(mock_nb, tmp_path):
 def test_send_message(tmp_path):
     success = infra.send_message(str(tmp_path), "ceo", "hello", subject="Greetings")
     assert success is True
-    outbox_dir = tmp_path / ".jbot" / "outbox"
+    outbox_dir = tmp_path / ".system" / "outbox"
     assert outbox_dir.exists()
     msg_files = os.listdir(outbox_dir)
     assert len(msg_files) == 1 and "ceo.txt" in msg_files[0]
 
 
-@patch("jbot_infra.get_memory_client")
-def test_run_maintenance(mock_nb_client, tmp_path):
-    jbot_dir = tmp_path / ".jbot"
-    jbot_dir.mkdir()
-    queues_dir = jbot_dir / "queues"
+@patch("core_infra.get_memory_client")
+def test_run_maintenance(mock_core_nb_client, tmp_path):
+    system_dir = tmp_path / ".system"
+    system_dir.mkdir()
+    queues_dir = system_dir / "queues"
     queues_dir.mkdir()
     (queues_dir / "tester.json").write_text(json.dumps({"summary": "done"}))
     infra.run_maintenance(str(tmp_path))
     assert not (queues_dir / "tester.json").exists()
-    mock_nb_client.return_value.add.assert_called_once()
+    mock_core_nb_client.return_value.add.assert_called_once()
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_note_content(mock_nb):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -132,7 +132,7 @@ def test_get_note_content(mock_nb):
 
     # Tag search
     assert infra.get_note_content("type:tasks") == "Content"
-    mock_client.ls.assert_called_with(tags=["tasks"])
+    mock_client.ls.assert_called_with(tags=["type:tasks"])
     mock_client.show.assert_called_with("1")
 
     # Fallback to query
@@ -151,7 +151,7 @@ def test_get_note_content(mock_nb):
     assert infra.get_note_content("type:idea") is None
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_note_content_no_id(mock_nb):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -160,7 +160,7 @@ def test_get_note_content_no_id(mock_nb):
     assert infra.get_note_content("type:missing") is None
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_messages_exc_v2(mock_nb, tmp_path):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -178,17 +178,17 @@ def test_parse_directives_exception(tmp_path):
     assert infra.parse_directives(str(dir_path)) == []
 
 
-@patch("jbot_infra.get_project_summary")
+@patch("core_infra.get_project_summary")
 def test_generate_dashboard_advanced(mock_get_summary, tmp_path):
     mock_get_summary.return_value = {
         "vision": "Test Vision",
         "team": {"agent1": {"role": "dev", "description": "desc"}},
         "tasks": {
-            "active": ["- [ ] Task 1 (Agent: lead)"],
+            "active": ["- [ ] Task 1 [lead]"],
             "backlog": [],
             "done_count": 0,
             "sections": {
-                "active": ["- [ ] Task 1 (Agent: lead)\n"],
+                "active": ["- [ ] Task 1 [lead]\n"],
                 "backlog": [],
                 "completed": [],
             },
@@ -218,26 +218,26 @@ def test_generate_dashboard_advanced(mock_get_summary, tmp_path):
 
 def test_consolidate_messages_errors(tmp_path):
     assert infra.consolidate_messages(str(tmp_path)) is None  # no outbox
-    (tmp_path / ".jbot/outbox").mkdir(parents=True)
-    (tmp_path / ".jbot/outbox/msg.txt").write_text("hi")
+    (tmp_path / ".system/outbox").mkdir(parents=True)
+    (tmp_path / ".system/outbox/msg.txt").write_text("hi")
     # trigger error by not having messages dir
     infra.consolidate_messages(str(tmp_path))
 
 
 def test_consolidate_memory_errors(tmp_path):
     assert infra.consolidate_memory(str(tmp_path)) is None  # no queues
-    queues = tmp_path / ".jbot/queues"
+    queues = tmp_path / ".system/queues"
     queues.mkdir(parents=True)
     f = queues / "agent.json"
     f.write_text('{"summary": "test"}')
     # trigger error by bad nb client
-    with patch("jbot_infra.get_memory_client") as mock_nb:
+    with patch("core_infra.get_memory_client") as mock_nb:
         mock_nb.return_value.add.side_effect = Exception("err")
         infra.consolidate_memory(str(tmp_path))
         assert f.exists()  # Should not have been removed due to error
 
 
-@patch("jbot_infra.initialize_infrastructure", side_effect=Exception("Crash"))
+@patch("core_infra.initialize_infrastructure", side_effect=Exception("Crash"))
 def test_run_maintenance_error(mock_init, tmp_path):
     assert infra.run_maintenance(str(tmp_path)) is False
 
@@ -249,13 +249,13 @@ def test_parse_directives_filename_expired(tmp_path):
     assert infra.parse_directives(str(dir_path)) == []
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_consolidate_messages_success(mock_nb, tmp_path):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
 
-    (tmp_path / ".jbot/outbox").mkdir(parents=True)
-    (tmp_path / ".jbot/outbox/msg.txt").write_text("From: ceo\nSubject: hi\n\ncontent")
+    (tmp_path / ".system/outbox").mkdir(parents=True)
+    (tmp_path / ".system/outbox/msg.txt").write_text("From: ceo\nSubject: hi\n\ncontent")
 
     infra.consolidate_messages(str(tmp_path))
 
@@ -266,10 +266,10 @@ def test_consolidate_messages_success(mock_nb, tmp_path):
     assert "type:message" in kwargs["tags"]
 
     # Verify deleted
-    assert not (tmp_path / ".jbot/outbox/msg.txt").exists()
+    assert not (tmp_path / ".system/outbox/msg.txt").exists()
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_messages_permission_error(mock_nb, tmp_path):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -298,7 +298,7 @@ def test_parse_message_headers():
     assert headers["subject"] == "none"
 
 
-@patch("jbot_infra.get_note_content")
+@patch("core_infra.get_note_content")
 def test_get_vision_variants(mock_get_note, tmp_path):
     # Regex match (88)
     mock_get_note.return_value = "## Strategic Vision\n> Real Vision"
@@ -328,14 +328,14 @@ def test_parse_directives_exception_inner(tmp_path):
     dir_path = tmp_path / "dirs_exc"
     dir_path.mkdir()
     (dir_path / "test.txt").write_text("content")
-    with patch("jbot_core.read_file", side_effect=Exception("Read fail")):
+    with patch("core_logic.read_file", side_effect=Exception("Read fail")):
         assert infra.parse_directives(str(dir_path)) == []
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_consolidate_memory_env_defaults(mock_nb, tmp_path):
     # 298, 300
-    queues = tmp_path / ".jbot/queues"
+    queues = tmp_path / ".system/queues"
     queues.mkdir(parents=True)
     (queues / "agent.json").write_text('{"summary": "s"}')
 
@@ -344,7 +344,7 @@ def test_consolidate_memory_env_defaults(mock_nb, tmp_path):
         # This should trigger lines 298 and 300
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_note_content_task_preference(mock_nb):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -364,9 +364,9 @@ def test_get_note_content_task_preference(mock_nb):
 
 
 def test_get_project_summary(tmp_path):
-    (tmp_path / ".jbot").mkdir()
-    (tmp_path / ".jbot/agents.json").write_text("{}")
-    with patch("jbot_tasks.parse_tasks") as mock_parse:
+    (tmp_path / ".system").mkdir()
+    (tmp_path / ".system/agents.json").write_text("{}")
+    with patch("core_tasks.parse_tasks") as mock_parse:
         mock_parse.return_value = {
             "active": [],
             "done_count": 0,
@@ -381,12 +381,12 @@ def test_get_project_summary(tmp_path):
 
 
 def test_get_project_summary_exception(tmp_path):
-    with patch("jbot_tasks.parse_tasks", side_effect=Exception("Task Error")):
+    with patch("core_tasks.parse_tasks", side_effect=Exception("Task Error")):
         summary = infra.get_project_summary(str(tmp_path))
         assert summary["tasks"]["active"] == []
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_messages_sort_error(mock_nb, tmp_path):
     mock_client = MagicMock()
     mock_nb.return_value = mock_client
@@ -397,50 +397,50 @@ def test_get_recent_messages_sort_error(mock_nb, tmp_path):
     assert len(msgs) == 1
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_get_recent_messages_human_error(mock_nb, tmp_path):
     mock_nb.return_value.ls.return_value = []
     msgs_dir = tmp_path / "messages"
     msgs_dir.mkdir()
     (msgs_dir / "human.txt").write_text("hi")
-    with patch("jbot_core.read_file", side_effect=Exception("err")):
+    with patch("core_logic.read_file", side_effect=Exception("err")):
         msgs = infra.get_recent_messages(str(msgs_dir), include_human=True)
         assert msgs == []
 
 
-@patch("jbot_tasks.parse_tasks", side_effect=Exception("Crash"))
+@patch("core_tasks.parse_tasks", side_effect=Exception("Crash"))
 def test_get_project_summary_metrics_crash(mock_parse, tmp_path):
     # This should trigger line 303-304 if it's inside a try-except
     summary = infra.get_project_summary(str(tmp_path))
     assert "vision" in summary
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_consolidate_messages_empty_file(mock_nb, tmp_path):
-    (tmp_path / ".jbot/outbox").mkdir(parents=True)
-    (tmp_path / ".jbot/outbox/empty.txt").write_text("")
+    (tmp_path / ".system/outbox").mkdir(parents=True)
+    (tmp_path / ".system/outbox/empty.txt").write_text("")
     infra.consolidate_messages(str(tmp_path))
-    assert (tmp_path / ".jbot/outbox/empty.txt").exists()
+    assert (tmp_path / ".system/outbox/empty.txt").exists()
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_consolidate_messages_env_defaults(mock_nb, tmp_path):
-    (tmp_path / ".jbot/outbox").mkdir(parents=True)
+    (tmp_path / ".system/outbox").mkdir(parents=True)
     with patch.dict(os.environ, {}, clear=True):
         infra.consolidate_messages(str(tmp_path))
 
 
-@patch("jbot_infra.get_memory_client")
+@patch("core_infra.get_memory_client")
 def test_consolidate_messages_loop_error(mock_nb, tmp_path):
-    (tmp_path / ".jbot/outbox").mkdir(parents=True)
-    (tmp_path / ".jbot/outbox/err.txt").write_text("From: a\nSubject: s\n\nhi")
+    (tmp_path / ".system/outbox").mkdir(parents=True)
+    (tmp_path / ".system/outbox/err.txt").write_text("From: a\nSubject: s\n\nhi")
     mock_nb.return_value.add.side_effect = Exception("add error")
     infra.consolidate_messages(str(tmp_path))
-    assert (tmp_path / ".jbot/outbox/err.txt").exists()
+    assert (tmp_path / ".system/outbox/err.txt").exists()
 
 
-@patch("jbot_rotation.perform_rotations")
-@patch("jbot_utils.generate_dashboard")
-@patch("jbot_infra.get_memory_client")
+@patch("core_rotation.perform_rotations")
+@patch("core_utils.generate_dashboard")
+@patch("core_infra.get_memory_client")
 def test_run_maintenance_full_success(mock_nb, mock_dash, mock_rot, tmp_path):
     assert infra.run_maintenance(str(tmp_path)) is True

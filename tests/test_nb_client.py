@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-from nb_client import NbClient
+from core_nb_client import NbClient
 
 
 @pytest.fixture
@@ -14,7 +14,7 @@ def client():
     NbClient.clear_cache()
     # Use a custom env to avoid host pollution
     env = {"EDITOR": "cat", "PAGER": "cat", "NB_USER_NAME": "Test User"}
-    return NbClient(notebook="jbot", env=env)
+    return NbClient(notebook="knowledge", env=env)
 
 
 @patch("subprocess.run")
@@ -32,7 +32,7 @@ def test_add_note(mock_run, client):
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
     assert "nb" in args
-    assert "jbot:add" in args
+    assert "knowledge:add" in args
     assert "--title" in args
     assert "Test Title" in args
     assert "--content" in args
@@ -55,7 +55,7 @@ def test_show_note(mock_run, client):
     assert content == "Test Content\nLine 2"
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
-    assert "jbot:show" in args
+    assert "knowledge:show" in args
     assert "123" in args
     assert "--print" in args
 
@@ -65,8 +65,8 @@ def test_query_notes(mock_run, client):
     mock_result = MagicMock()
     mock_result.returncode = 0
     mock_result.stdout = """
-[jbot:1] 🔖 Test Bookmark
-[jbot:2] Regular Note Title
+[knowledge:1] 🔖 Test Bookmark
+[knowledge:2] Regular Note Title
 [3] Another Note
 """
     mock_run.return_value = mock_result
@@ -83,7 +83,7 @@ def test_query_notes(mock_run, client):
 
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
-    assert "jbot:search" in args
+    assert "knowledge:search" in args
     assert "Test" in args
 
 
@@ -91,7 +91,7 @@ def test_query_notes(mock_run, client):
 def test_ls_notes(mock_run, client):
     mock_result = MagicMock()
     mock_result.returncode = 0
-    mock_result.stdout = "[jbot:42] Memory: [agent1] - Summary"
+    mock_result.stdout = "[knowledge:42] Memory: [agent1] - Summary"
     mock_run.return_value = mock_result
 
     notes = client.ls(tags=["memory"], limit=5)
@@ -102,7 +102,7 @@ def test_ls_notes(mock_run, client):
 
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
-    assert "jbot:search" in args
+    assert "knowledge:search" in args
     assert "--list" in args
     assert "memory" in args
 
@@ -110,7 +110,7 @@ def test_ls_notes(mock_run, client):
 def test_client_default_env():
     # Test without passing env and empty os.environ
     with patch.dict(os.environ, {}, clear=True):
-        client = NbClient(notebook="jbot")
+        client = NbClient(notebook="knowledge")
         assert client.env["EDITOR"] == "cat"
         assert client.env["PAGER"] == "cat"
 
@@ -168,7 +168,7 @@ def test_parse_ls_output_skip_lines(mock_run, client):
 -
 -------------------
 
-[jbot:42] Valid Note
+[knowledge:42] Valid Note
 """
     mock_run.return_value = mock_result
 
@@ -189,7 +189,7 @@ def test_delete_note(mock_run, client):
     assert success is True
     mock_run.assert_called_once()
     args = mock_run.call_args[0][0]
-    assert "jbot:delete" in args
+    assert "knowledge:delete" in args
     assert "123" in args
     assert "--force" in args
 
@@ -206,7 +206,7 @@ def test_edit_note(mock_run, client):
 
     assert success is True
     args = mock_run.call_args[0][0]
-    assert "jbot:edit" in args
+    assert "knowledge:edit" in args
     assert "123" in args
     assert "--content" in args
     assert "New Content" in args
@@ -228,7 +228,7 @@ def test_ls_notes_with_limit(mock_run, client):
     notes = client.ls(limit=2)
     # mock_run might be called with ls --filenames now
     args = mock_run.call_args[0][0]
-    assert "jbot:ls" in args or "jbot:search" in args
+    assert "knowledge:ls" in args or "knowledge:search" in args
 
     # Test limit when tags are present
     mock_run.reset_mock()
@@ -246,7 +246,7 @@ def test_client_init_mock_less():
         patch("os.chmod") as mock_chmod,
     ):
         mock_tmp_inst = MagicMock()
-        mock_tmp_inst.name = "/tmp/jbot_bin_random"
+        mock_tmp_inst.name = "/tmp/core_bin_random"
         mock_tmp.return_value = mock_tmp_inst
 
         # Mock paths: less does not exist
@@ -254,6 +254,6 @@ def test_client_init_mock_less():
 
         client = NbClient(notebook="test")
 
-        assert "/tmp/jbot_bin_random" in client.env["PATH"]
+        assert "/tmp/core_bin_random" in client.env["PATH"]
         mock_open.assert_called()
         mock_chmod.assert_called()

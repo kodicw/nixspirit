@@ -1,5 +1,5 @@
 {
-  description = "Nix Spirit — Nix-based AI agent scheduler and Home Manager module";
+  description = "Autonomous Organization Core — Generic AI agent scheduler and infrastructure";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -21,11 +21,11 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        spirit-cli = pkgs.callPackage ./pkgs/spirit-cli.nix { scripts = ./scripts; };
+        core-cli = pkgs.callPackage ./pkgs/core-cli.nix { scripts = ./scripts; };
       in
       {
-        packages.default = spirit-cli;
-        packages.spirit-cli = spirit-cli;
+        packages.default = core-cli;
+        packages.core-cli = core-cli;
 
         devShells.default = pkgs.mkShell {
           packages = [
@@ -44,7 +44,7 @@
             pkgs.jq
             pkgs.gnugrep
             pkgs.which
-            spirit-cli
+            core-cli
           ];
 
           shellHook = ''
@@ -73,7 +73,7 @@
                   pkgs.gemini-cli
                   pkgs.nb
                   pkgs.bandit
-                  spirit-cli.python
+                  core-cli.python
                 ];
               }
               ''
@@ -112,9 +112,8 @@
     )
     // {
       homeManagerModules = {
-        nixspirit = import ./modules/nixspirit.nix;
-        ai-company = import ./modules/ai-company.nix;
-        default = self.homeManagerModules.nixspirit;
+        core-system = import ./modules/core-system.nix;
+        default = self.homeManagerModules.core-system;
       };
     };
 }

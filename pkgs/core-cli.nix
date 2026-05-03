@@ -4,7 +4,7 @@
   scripts,
 }:
 let
-  spiritPython = pkgs.python3.withPackages (ps: [
+  corePython = pkgs.python3.withPackages (ps: [
     ps.jinja2
     ps.pytest
     ps.pytest-mock
@@ -12,26 +12,26 @@ let
   ]);
 in
 pkgs.stdenv.mkDerivation {
-  pname = "spirit-cli";
-  version = "1.3.0";
+  pname = "core-cli";
+  version = "1.4.0";
   src = scripts;
   nativeBuildInputs = [ pkgs.makeWrapper ];
-  buildInputs = [ spiritPython ];
+  buildInputs = [ corePython ];
   dontBuild = true;
   installPhase = ''
     mkdir -p $out/bin
     cp -r . $out/scripts
-    makeWrapper ${spiritPython}/bin/python3 $out/bin/spirit \
-      --add-flags "$out/scripts/spirit_cli.py" \
+    makeWrapper ${corePython}/bin/python3 $out/bin/core-cli \
+      --add-flags "$out/scripts/core_cli.py" \
       --set PYTHONPATH "$out/scripts"
   '';
 
   passthru = {
-    python = spiritPython;
+    python = corePython;
   };
 
   meta = with lib; {
-    description = "spirit Centralized CLI and Agent Runner";
+    description = "Autonomous Organization Core CLI and Agent Runner";
     license = licenses.mit;
     platforms = platforms.unix;
   };

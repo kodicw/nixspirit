@@ -1,19 +1,19 @@
 # Authoritative Task Board (nb)
 
-The JBot Task Board has been moved to technical memory in `nb`.
+The Core Task Board has been moved to technical memory in `nb`.
 
 To view the current status, run:
 ```bash
-jbot status
+core-cli status
 ```
 or
 ```bash
-jbot task list
+core-cli task list
 ```
 
 To see the full authoritative board in `nb`:
 ```bash
-nb jbot:show type:tasks
+nb knowledge:show type:tasks
 ```
 
 ## 🎯 Current Vision

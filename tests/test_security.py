@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_core as core
+import core_logic as core
 
 
 def test_ensure_single_user_success(tmp_path):
@@ -26,7 +26,7 @@ def test_ensure_single_user_failure(tmp_path):
 def test_ensure_single_user_exception():
     # Should just log a warning and continue if stat fails
     with patch("os.stat", side_effect=Exception("stat error")):
-        with patch("jbot_core.log") as mock_log:
+        with patch("core_logic.log") as mock_log:
             core.ensure_single_user("/nonexistent")
             mock_log.assert_any_call(
                 "Warning: Could not verify single-user constraint: stat error",

@@ -1,4 +1,4 @@
-# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-63]], [[nb:spirit:adr-2]], [[nb:spirit:adr-61]], [[nb:spirit:adr-57]]
+# Context: [[nb:knowledge:adr-6]], [[nb:knowledge:adr-63]], [[nb:knowledge:adr-2]], [[nb:knowledge:adr-61]], [[nb:knowledge:adr-57]]
 import os
 import re
 import sys
@@ -6,11 +6,12 @@ import json
 import subprocess
 from datetime import datetime
 from typing import Any, Optional, List, Dict
+import constants
 
 
 # --- Logging ---
-def log(msg: str, component: str = "spirit") -> None:
-    """Standardized logging format for all spirit scripts."""
+def log(msg: str, component: str = "System") -> None:
+    """Standardized logging format for all scripts."""
     print(f"[{datetime.now()}] {component}: {msg}")
 
 
@@ -30,8 +31,8 @@ def find_file_upwards(filename: str, start_dir: str = ".") -> Optional[str]:
 
 
 def get_project_root(start_dir: str = ".") -> str:
-    """Find the project root by looking for .project_goal."""
-    goal_path = find_file_upwards(".project_goal", start_dir)
+    """Find the project root by looking for the goal file."""
+    goal_path = find_file_upwards(constants.GOAL_FILE, start_dir)
     if goal_path:
         return os.path.dirname(goal_path)
     return os.path.abspath(start_dir)
@@ -42,20 +43,20 @@ def get_notebook_name(
 ) -> str:
     """
     Determines the nb notebook name for the current project.
-    Precedence: env['spirit_NOTEBOOK'] > .spirit/notebook file > basename of project_dir.
-    Default fallback: 'spirit'
+    Precedence: env[CORE_NOTEBOOK] > .system/notebook file > basename of project_dir.
+    Default fallback: 'knowledge'
     """
     # 1. Environment Variable
     if env is None:
         env = os.environ
 
-    env_notebook = env.get("spirit_NOTEBOOK")
+    env_notebook = env.get(constants.ENV_NOTEBOOK)
     if env_notebook:
         return env_notebook
 
     # 2. Local config file
     root = get_project_root(project_dir)
-    config_path = os.path.join(root, ".spirit/notebook")
+    config_path = os.path.join(root, constants.NOTEBOOK_CONFIG)
     if os.path.exists(config_path):
         content = read_file(config_path).strip()
         if content:
@@ -66,7 +67,7 @@ def get_notebook_name(
         return os.path.basename(root)
 
     # 4. Final Fallback
-    return "nixspirit"
+    return constants.DEFAULT_NOTEBOOK_NAME
 
 
 def check_config(project_dir: str) -> List[str]:
@@ -77,27 +78,27 @@ def check_config(project_dir: str) -> List[str]:
     warnings = []
     root = get_project_root(project_dir)
 
-    # 1. Check for .project_goal
-    if not os.path.exists(os.path.join(root, ".project_goal")):
-        warnings.append(f"CRITICAL: .project_goal missing in {root}. Agents will lack vision.")
+    # 1. Check for project goal file
+    if not os.path.exists(os.path.join(root, constants.GOAL_FILE)):
+        warnings.append(f"CRITICAL: {constants.GOAL_FILE} missing in {root}. Agents will lack vision.")
 
-    # 2. Check for .spirit/notebook
-    config_path = os.path.join(root, ".spirit/notebook")
+    # 2. Check for notebook config
+    config_path = os.path.join(root, constants.NOTEBOOK_CONFIG)
     if not os.path.exists(config_path):
-        warnings.append(f"WARNING: .spirit/notebook missing. Defaulting to '{get_notebook_name(project_dir)}'.")
+        warnings.append(f"WARNING: {constants.NOTEBOOK_CONFIG} missing. Defaulting to '{get_notebook_name(project_dir)}'.")
     else:
         nb_name = read_file(config_path).strip()
         # Verify notebook exists in nb
         try:
             res = subprocess.run(["nb", "notebooks", "--names"], capture_output=True, text=True, env={**os.environ, "EDITOR": "cat"})
             if nb_name not in res.stdout.splitlines():
-                warnings.append(f"CRITICAL: Notebook '{nb_name}' defined in .spirit/notebook does not exist in 'nb'.")
+                warnings.append(f"CRITICAL: Notebook '{nb_name}' defined in {constants.NOTEBOOK_CONFIG} does not exist in 'nb'.")
         except Exception:
             pass
 
     # 3. Check for agents.json
-    if not os.path.exists(os.path.join(root, ".spirit/agents.json")):
-        warnings.append("WARNING: .spirit/agents.json missing. No agents are registered for this project.")
+    if not os.path.exists(os.path.join(root, constants.AGENTS_REGISTRY)):
+        warnings.append(f"WARNING: {constants.AGENTS_REGISTRY} missing. No agents are registered for this project.")
 
     return warnings
 
@@ -151,10 +152,10 @@ def write_file(file_path: str, content: str) -> bool:
 # --- Security & Isolation ---
 def ensure_single_user(project_dir: str) -> None:
     """
-    Enforces that spirit components remain under a single Linux user account.
+    Enforces that core components remain under a single Linux user account.
     Exits if the current user does not own the project directory.
 
-    Context: [[nb:spirit:adr-210]], [[nb:spirit:human]]
+    Context: [[nb:knowledge:adr-210]], [[nb:knowledge:human]]
     """
     try:
         project_stat = os.stat(project_dir)
@@ -166,7 +167,7 @@ def ensure_single_user(project_dir: str) -> None:
                 "Security",
             )
             log(
-                "spirit organizations must be isolated by Linux user accounts. Use separate users for different organizations.",
+                "core organizations must be isolated by Linux user accounts. Use separate users for different organizations.",
                 "Security",
             )
             sys.exit(1)
@@ -204,7 +205,7 @@ def init_git(project_dir: str = ".") -> bool:
 
 
 def switch_to_develop(project_dir: str = ".") -> bool:
-    """Ensures the repository is on the 'develop' branch."""
+    """Ensures the repository is on the default branch."""
     try:
         # Check if we are in a git repo
         if not os.path.exists(os.path.join(project_dir, ".git")):
@@ -218,41 +219,41 @@ def switch_to_develop(project_dir: str = ".") -> bool:
         )
 
         if res.returncode != 0:
-            # Likely an empty repo, just create develop
-            log("Empty repository detected. Creating develop branch...", "Core")
+            # Likely an empty repo, just create default branch
+            log(f"Empty repository detected. Creating {constants.DEFAULT_BRANCH} branch...", "Core")
             subprocess.run(
-                ["git", "-C", project_dir, "checkout", "-b", "develop"],
+                ["git", "-C", project_dir, "checkout", "-b", constants.DEFAULT_BRANCH],
                 capture_output=True,
             )
             return True
 
         current_branch = res.stdout.strip()
-        if current_branch == "develop":
+        if current_branch == constants.DEFAULT_BRANCH:
             return True
 
-        log(f"Switching from {current_branch} to develop branch...", "Core")
+        log(f"Switching from {current_branch} to {constants.DEFAULT_BRANCH} branch...", "Core")
 
-        # Check if develop exists
+        # Check if branch exists
         res = subprocess.run(
-            ["git", "-C", project_dir, "branch", "--list", "develop"],
+            ["git", "-C", project_dir, "branch", "--list", constants.DEFAULT_BRANCH],
             capture_output=True,
             text=True,
             check=True,
         )
 
-        if "develop" in res.stdout:
+        if constants.DEFAULT_BRANCH in res.stdout:
             subprocess.run(
-                ["git", "-C", project_dir, "checkout", "develop"], check=True
+                ["git", "-C", project_dir, "checkout", constants.DEFAULT_BRANCH], check=True
             )
         else:
-            # Create develop from current branch
+            # Create branch from current branch
             subprocess.run(
-                ["git", "-C", project_dir, "checkout", "-b", "develop"], check=True
+                ["git", "-C", project_dir, "checkout", "-b", constants.DEFAULT_BRANCH], check=True
             )
 
         return True
     except Exception as e:
-        log(f"Warning: Failed to switch to develop branch: {e}", "Core")
+        log(f"Warning: Failed to switch to {constants.DEFAULT_BRANCH} branch: {e}", "Core")
         return False
 
 
@@ -271,7 +272,7 @@ def commit_all(project_dir: str, message: str) -> bool:
         )
         if not res_name.stdout.strip():
             subprocess.run(
-                ["git", "-C", project_dir, "config", "user.name", "spirit System"],
+                ["git", "-C", project_dir, "config", "user.name", constants.DEFAULT_SYSTEM_NAME],
                 check=True,
             )
 
@@ -288,7 +289,7 @@ def commit_all(project_dir: str, message: str) -> bool:
                     project_dir,
                     "config",
                     "user.email",
-                    "system@internal.spirit",
+                    constants.DEFAULT_SYSTEM_EMAIL,
                 ],
                 check=True,
             )
@@ -303,7 +304,7 @@ def commit_all(project_dir: str, message: str) -> bool:
 
 def get_version(project_dir: str = ".") -> str:
     """Retrieve the current version from the VERSION file."""
-    version_path = os.path.join(project_dir, "VERSION")
+    version_path = os.path.join(project_dir, constants.VERSION_FILE)
     return read_file(version_path, default="0.0.0")
 
 
@@ -371,7 +372,7 @@ def bump_version(project_dir: str = ".", part: str = "patch") -> Optional[str]:
             return None
 
         new_version = ".".join(map(str, parts))
-        if write_file(os.path.join(project_dir, "VERSION"), new_version):
+        if write_file(os.path.join(project_dir, constants.VERSION_FILE), new_version):
             return new_version
     except Exception as e:
         log(f"Error bumping version: {e}", "Core")
@@ -383,21 +384,21 @@ def update_changelog(project_dir: str, new_version: str) -> bool:
     Updates CHANGELOG.md by moving content from the [Unreleased] section
     to a new versioned section.
     """
-    changelog_path = os.path.join(project_dir, "CHANGELOG.md")
+    changelog_path = os.path.join(project_dir, constants.CHANGELOG_FILE)
     if not os.path.exists(changelog_path):
-        log("CHANGELOG.md not found.", "Core")
+        log(f"{constants.CHANGELOG_FILE} not found.", "Core")
         return False
 
     with open(changelog_path, "r") as f:
         lines = f.readlines()
 
-    # Robust regex for section matching as per ADR [[nb:spirit:adr-193]]
+    # Robust regex for section matching as per ADR [[nb:knowledge:adr-193]]
     re_unreleased = re.compile(r"^##.*unreleased", re.IGNORECASE)
     re_version_header = re.compile(r"^##\s*\[", re.IGNORECASE)
 
     unreleased_index = -1
     next_version_index = -1
-    today_date = datetime.now().strftime("%Y-%m-%d")
+    today_date = datetime.now().strftime(constants.DATE_FORMAT)
 
     # Locate the [Unreleased] section and the start of the next version section
     for i, line in enumerate(lines):

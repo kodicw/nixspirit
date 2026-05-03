@@ -19,9 +19,9 @@
 - [x] **Implement exhaustive unit and integration test suite (80%+ coverage)** (Agent: tester)
 
 ## Archived on 2026-04-21 06:52:44
-- [x] **Release JBot v1.2.0 (The Pure Release)** (Agent: lead)
-- [x] **Integrate all standalone scripts into the JBot CLI** (Agent: lead)
-- [x] **Implement `jbot task` write commands (add/update) for CLI** (Agent: lead)
+- [x] **Release Core v1.2.0 (The Pure Release)** (Agent: lead)
+- [x] **Integrate all standalone scripts into the Core CLI** (Agent: lead)
+- [x] **Implement `core-cli task` write commands (add/update) for CLI** (Agent: lead)
 
 
 ## Completed Tasks

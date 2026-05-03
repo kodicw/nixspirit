@@ -6,15 +6,15 @@ from unittest.mock import patch, MagicMock
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_utils as utils
+import core_utils as utils
 
 
 @pytest.fixture
-def mock_nb_client():
+def mock_core_nb_client():
     with (
-        patch("jbot_utils.get_memory_client") as m1,
-        patch("jbot_infra.get_memory_client") as m2,
-        patch("jbot_tasks.get_memory_client") as m3,
+        patch("core_utils.get_memory_client") as m1,
+        patch("core_infra.get_memory_client") as m2,
+        patch("core_tasks.get_memory_client") as m3,
     ):
         client = MagicMock()
         m1.return_value = client
@@ -23,14 +23,14 @@ def mock_nb_client():
         yield client
 
 
-def test_generate_dashboard_with_roi(tmp_path, mock_nb_client):
+def test_generate_dashboard_with_roi(tmp_path, mock_core_nb_client):
     # Setup project structure
     project_dir = tmp_path
-    jbot_dir = project_dir / ".jbot"
-    jbot_dir.mkdir()
+    system_dir = project_dir / ".system"
+    system_dir.mkdir()
 
     # Agents
-    agents_file = jbot_dir / "agents.json"
+    agents_file = system_dir / "agents.json"
     agents_file.write_text(
         json.dumps({"tester": {"role": "QA", "description": "Verify changes"}})
     )
@@ -39,16 +39,16 @@ def test_generate_dashboard_with_roi(tmp_path, mock_nb_client):
     changelog = project_dir / "CHANGELOG.md"
     changelog.write_text("- **Milestone 1**\n- **Milestone 2**")
 
-    # Tasks (Mock jbot_tasks.parse_tasks)
+    # Tasks (Mock core_tasks.parse_tasks)
     tasks_data = {
-        "active": ["- [ ] Task 1 (Agent: lead)", "- [ ] Task 2"],
+        "active": ["- [ ] Task 1 [lead]", "- [ ] Task 2"],
         "backlog": ["- [ ] Backlog 1"],
         "done_count": 5,
         "sections": {"completed": ["- [x] Done 1", "- [x] Done 2"]},
     }
 
     # Mock vision and other calls that might use ls()
-    mock_nb_client.show.return_value = "No vision"
+    mock_core_nb_client.show.return_value = "No vision"
 
     # Use a side_effect function for more robust mocking
     def ls_side_effect(tags=None, limit=None):
@@ -64,13 +64,13 @@ def test_generate_dashboard_with_roi(tmp_path, mock_nb_client):
             return [MagicMock() for _ in range(15)]
         return []
 
-    mock_nb_client.ls.side_effect = ls_side_effect
+    mock_core_nb_client.ls.side_effect = ls_side_effect
 
-    with patch("jbot_tasks.parse_tasks", return_value=tasks_data):
+    with patch("core_tasks.parse_tasks", return_value=tasks_data):
         # We also need to patch utils.get_recent_adrs because it's in the same module as generate_dashboard
         # but infra.get_project_summary also calls it.
         with patch(
-            "jbot_utils.get_recent_adrs",
+            "core_utils.get_recent_adrs",
             return_value=[{"id": "205", "title": "ADR: ROI"}],
         ):
             # Create a mermaid file to cover mermaid logic
@@ -101,12 +101,12 @@ def test_generate_dashboard_with_roi(tmp_path, mock_nb_client):
             assert "graph TD" in content
 
 
-def test_generate_dashboard_roi_exception(tmp_path, mock_nb_client):
-    mock_nb_client.ls.side_effect = Exception("NB Error")
+def test_generate_dashboard_roi_exception(tmp_path, mock_core_nb_client):
+    mock_core_nb_client.ls.side_effect = Exception("NB Error")
 
     output_file = tmp_path / "INDEX.md"
     # Should not crash but log error
-    with patch("jbot_core.log") as mock_log:
+    with patch("core_logic.log") as mock_log:
         utils.generate_dashboard(str(output_file), str(tmp_path))
         # It should log SOME error related to NB Error
         found = False

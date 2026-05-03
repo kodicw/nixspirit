@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_rotation as rotation
+import core_rotation as rotation
 
 
 def test_purge_directives(tmp_path):
@@ -38,7 +38,7 @@ def test_purge_directives(tmp_path):
 
     # Error cases
     assert rotation.purge_directives("nonexistent", "archive") == 0
-    with patch("jbot_core.read_file", side_effect=Exception("Error")):
+    with patch("core_logic.read_file", side_effect=Exception("Error")):
         rotation.purge_directives(str(dir_path), str(archive_path))
 
 
@@ -69,7 +69,7 @@ def test_rotate_messages(tmp_path):
 
 
 def test_rotate_nb_notes():
-    from jbot_memory_interface import MemoryNote
+    from core_memory_interface import MemoryNote
 
     mock_notes = [
         MemoryNote(id="1", title="Oldest", tags=[]),
@@ -79,7 +79,7 @@ def test_rotate_nb_notes():
         MemoryNote(id="5", title="Newest", tags=[]),
     ]
 
-    with patch("jbot_rotation.get_memory_client") as mock_client_class:
+    with patch("core_rotation.get_memory_client") as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.ls.return_value = mock_notes
         mock_client.delete.return_value = True
@@ -95,14 +95,14 @@ def test_rotate_nb_notes():
 
 
 def test_rotate_nb_notes_preserve():
-    from jbot_memory_interface import MemoryNote
+    from core_memory_interface import MemoryNote
 
     mock_notes = [
         MemoryNote(id="1", title="Oldest", tags=[]),
         MemoryNote(id="5", title="Newest", tags=[]),
     ]
 
-    with patch("jbot_rotation.get_memory_client") as mock_client_class:
+    with patch("core_rotation.get_memory_client") as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.ls.return_value = mock_notes
         mock_client.delete.return_value = True
@@ -115,24 +115,24 @@ def test_rotate_nb_notes_preserve():
 
 
 def test_perform_rotations(tmp_path):
-    jbot_dir = tmp_path / ".jbot"
-    jbot_dir.mkdir()
-    (jbot_dir / "directives").mkdir()
-    (jbot_dir / "messages").mkdir()
+    system_dir = tmp_path / ".system"
+    system_dir.mkdir()
+    (system_dir / "directives").mkdir()
+    (system_dir / "messages").mkdir()
 
     # Just ensure it runs without crashing
     rotation.perform_rotations(str(tmp_path))
 
 
 def test_perform_rotations_adr_limit():
-    from jbot_memory_interface import MemoryNote
+    from core_memory_interface import MemoryNote
 
     # Create 60 mock ADR notes
     mock_notes = [
         MemoryNote(id=str(i), title=f"ADR {i}", tags=["type:adr"]) for i in range(1, 61)
     ]
 
-    with patch("jbot_rotation.get_memory_client") as mock_client_class:
+    with patch("core_rotation.get_memory_client") as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.ls.return_value = mock_notes
         mock_client.delete.return_value = True
@@ -147,7 +147,7 @@ def test_perform_rotations_adr_limit():
 
 
 def test_perform_rotations_completed_limit():
-    from jbot_memory_interface import MemoryNote
+    from core_memory_interface import MemoryNote
     from unittest.mock import patch
 
     # Create 30 mock completed notes
@@ -156,13 +156,13 @@ def test_perform_rotations_completed_limit():
         for i in range(1, 31)
     ]
 
-    with patch("jbot_rotation.get_memory_client") as mock_client_class:
+    with patch("core_rotation.get_memory_client") as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.ls.return_value = mock_notes
         mock_client.delete.return_value = True
 
         # Run rotation for completed tasks
-        import jbot_rotation as rotation
+        import core_rotation as rotation
 
         count = rotation.rotate_nb_notes("status:completed", limit=20)
 
@@ -172,14 +172,14 @@ def test_perform_rotations_completed_limit():
 
 
 def test_rotate_nb_notes_non_numeric_ids():
-    from jbot_memory_interface import MemoryNote
+    from core_memory_interface import MemoryNote
 
     mock_notes = [
         MemoryNote(id="abc", title="Bad ID", tags=[]),
         MemoryNote(id="def", title="Another Bad ID", tags=[]),
     ]
 
-    with patch("jbot_rotation.get_memory_client") as mock_client_class:
+    with patch("core_rotation.get_memory_client") as mock_client_class:
         mock_client = mock_client_class.return_value
         mock_client.ls.return_value = mock_notes
         mock_client.delete.return_value = True

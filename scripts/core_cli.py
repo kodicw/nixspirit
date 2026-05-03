@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-63]], [[nb:spirit:adr-66]], [[nb:spirit:adr-57]], [[nb:spirit:adr-210]]
+# Context: [[nb:knowledge:adr-6]], [[nb:knowledge:adr-63]], [[nb:knowledge:adr-66]], [[nb:knowledge:adr-57]], [[nb:knowledge:adr-210]]
 import os
 import sys
 
@@ -8,16 +8,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import argparse
 import subprocess
-import spirit_core as core
-import spirit_tasks as tasks
-import spirit_infra as infra
-import spirit_rotation
-import spirit_utils as utils
-import spirit_agent
-import spirit_tui
-import spirit_infra_updates
-import spirit_init
-from spirit_memory_interface import get_memory_client
+import core_logic as core
+import core_tasks as tasks
+import core_infra as infra
+import core_rotation
+import core_utils as utils
+import core_agent
+import core_tui
+import core_infra_updates
+import core_init
+import constants
+from core_memory_interface import get_memory_client
 
 
 def get_status(project_dir: str) -> None:
@@ -31,7 +32,7 @@ def get_status(project_dir: str) -> None:
 
     summary = infra.get_project_summary(project_dir)
 
-    print("\n--- spirit Organization Status ---")
+    print(f"\n--- {constants.DEFAULT_SYSTEM_NAME} Status ---")
 
     print(f"\n🎯 Strategic Vision:\n> {summary['vision']}")
 
@@ -58,11 +59,11 @@ def get_status(project_dir: str) -> None:
 
 
 def get_tasks(project_dir: str, show_all: bool = False) -> None:
-    """Lists tasks from the nb task board."""
+    """Lists tasks from the knowledge base."""
     os.chdir(project_dir)
     tasks_data = tasks.parse_tasks()
 
-    print("\n--- spirit Task Board (nb) ---")
+    print(f"\n--- {constants.DEFAULT_SYSTEM_NAME} Task Board (nb) ---")
     if not show_all:
         print("## Strategic Vision")
         print(tasks_data["vision"])
@@ -102,11 +103,10 @@ def get_logs(project_dir: str, count: int = 10) -> None:
 def get_messages(project_dir: str, count: int = 5) -> None:
     """Displays recent inter-agent messages."""
     os.chdir(project_dir)
-    msg_dir = ".spirit/messages"
-    messages = infra.get_recent_messages(msg_dir, count)
+    messages = infra.get_recent_messages(include_human=True, project_dir=project_dir, count=count)
 
     if not messages:
-        print("No messages directory found.")
+        print("No messages found.")
         return
 
     print(f"\n--- Recent Messages (Last {len(messages)}) ---")
@@ -126,16 +126,16 @@ def handle_version(project_root: str, action: str, part: str = None) -> None:
     os.chdir(project_root)
     if action == "show":
         v = core.get_version(project_root)
-        print(f"Current spirit Version: v{v}")
+        print(f"Current Version: {constants.VERSION_TAG_PREFIX}{v}")
     elif action == "bump":
         new_v = core.bump_version(project_root, part)
         if new_v:
-            print(f"Successfully bumped version to: v{new_v}")
+            print(f"Successfully bumped version to: {constants.VERSION_TAG_PREFIX}{new_v}")
         else:
             print("Error: Failed to bump version.")
     elif action == "tag":
         v = core.get_version(project_root)
-        tag_name = f"v{v}"
+        tag_name = f"{constants.VERSION_TAG_PREFIX}{v}"
         print(f"Creating git tag: {tag_name}")
         try:
             subprocess.run(
@@ -164,9 +164,9 @@ def handle_version(project_root: str, action: str, part: str = None) -> None:
         if not core.update_changelog(project_root, new_v):
             print("Warning: Failed to update CHANGELOG.md automatically.")
 
-        tag_name = f"v{new_v}"
+        tag_name = f"{constants.VERSION_TAG_PREFIX}{new_v}"
         try:
-            subprocess.run(["git", "add", "VERSION", "CHANGELOG.md"], check=True)
+            subprocess.run(["git", "add", constants.VERSION_FILE, constants.CHANGELOG_FILE], check=True)
             subprocess.run(
                 ["git", "commit", "--no-verify", "-m", f"chore: release {tag_name}"],
                 check=True,
@@ -180,7 +180,7 @@ def handle_version(project_root: str, action: str, part: str = None) -> None:
 
 
 def handle_system(project_root: str, action: str, agent_name: str = None) -> None:
-    """Handles viewing and editing the spirit system prompt."""
+    """Handles viewing and editing the system prompt."""
     os.chdir(project_root)
 
     if action == "show":
@@ -198,9 +198,9 @@ def handle_system(project_root: str, action: str, agent_name: str = None) -> Non
             sys.exit(1)
 
         agent_info = registry.get(agent_name, {})
-        prompt_file = os.path.join(project_root, "spirit_prompt.txt")
+        prompt_file = os.path.join(project_root, constants.PROMPT_FILE)
 
-        resolved_prompt = spirit_agent.assemble_context(
+        resolved_prompt = core_agent.assemble_context(
             agent_name=agent_name,
             agent_role=agent_info.get("role", "Unknown"),
             agent_desc=agent_info.get("description", "Unknown"),
@@ -211,21 +211,21 @@ def handle_system(project_root: str, action: str, agent_name: str = None) -> Non
         print(resolved_prompt)
 
     elif action == "edit":
-        print("\n[NB] Opening system prompt for editing...")
-        # Check if it exists first to ensure we tag it correctly if it's new
-        if not infra.get_note_content("type:prompt"):
+        notebook = core.get_notebook_name(project_root)
+        print(f"\n[NB] Opening system prompt for editing in {notebook}...")
+        # Check if it exists first
+        if not infra.get_note_content(constants.TAG_PROMPT):
             print("Note: Creating new system prompt note in nb.")
-            # Create a skeleton if empty
-            client = get_memory_client()
-            client.add("System Prompt", "Initialize prompt here.", tags=["type:prompt"])
+            client = get_memory_client(notebook=notebook)
+            client.add("System Prompt", "Initialize prompt here.", tags=[constants.TAG_PROMPT])
 
         # Use interactive nb edit
-        subprocess.run(["nb", "spirit:edit", "type:prompt"])
+        subprocess.run(["nb", f"{notebook}:edit", f"tag:{constants.TAG_PROMPT}"])
 
 
 def main():
-    """spirit Centralized CLI Entry Point."""
-    parser = argparse.ArgumentParser(description="spirit Centralized CLI Tool")
+    """Centralized CLI Entry Point."""
+    parser = argparse.ArgumentParser(description=f"{constants.DEFAULT_SYSTEM_NAME} CLI Tool")
     parser.add_argument(
         "-d", "--dir", default=".", help="Project directory (default: .)"
     )
@@ -234,14 +234,13 @@ def main():
 
     # Init
     init_parser = subparsers.add_parser(
-        "init", help="Initialize a new spirit organization"
+        "init", help="Initialize a new organization"
     )
     init_parser.add_argument(
         "name", nargs="?", help="Organization name (defaults to directory name)"
     )
 
     # Status
-
     subparsers.add_parser("status", help="Show current vision and status")
 
     # Tasks
@@ -285,7 +284,7 @@ def main():
         "-r", "--reply-to", help="NB ID of the message to reply to"
     )
 
-    # Infra
+    # Maintenance
     m_parser = subparsers.add_parser("maintenance", help="Run maintenance")
     m_sub = m_parser.add_subparsers(dest="m_action")
     m_run = m_sub.add_parser("run", help="Run full maintenance loop")
@@ -314,7 +313,7 @@ def main():
     subparsers.add_parser("dashboard", help="Regenerate dashboard")
 
     # Agent
-    agent_parser = subparsers.add_parser("agent", help="Run a spirit agent")
+    agent_parser = subparsers.add_parser("agent", help="Run an agent")
     agent_parser.add_argument("--name")
     agent_parser.add_argument("--role")
     agent_parser.add_argument("--desc")
@@ -340,7 +339,7 @@ def main():
 
     # System Management
     sys_parser = subparsers.add_parser(
-        "system", help="Manage organization 'operating system' (prompt)"
+        "system", help="Manage 'operating system' (prompt)"
     )
     sys_sub = sys_parser.add_subparsers(dest="sys_action")
     show_parser = sys_sub.add_parser("show", help="Display the current system prompt")
@@ -355,7 +354,7 @@ def main():
         core.ensure_single_user(project_root)
 
     if args.command == "init":
-        if spirit_init.init_project(args.dir, args.name):
+        if core_init.init_project(args.dir, args.name):
             print(f"Project initialized in {args.dir}")
         else:
             print("Failed to initialize project.")
@@ -401,49 +400,36 @@ def main():
                 print(f"Failed to push note: {args.title}")
                 sys.exit(1)
         elif args.m_action == "infra-update":
-            if spirit_infra_updates.generate_infra_pr(project_root):
+            if core_infra_updates.generate_infra_pr(project_root):
                 print("Infrastructure update process completed.")
             else:
                 print("Infrastructure update failed or no updates needed.")
                 sys.exit(1)
+        elif args.m_action == "run" and args.all:
+            if not infra.run_maintenance_all():
+                sys.exit(1)
         else:
-            # Default to full maintenance run if no action or 'run'
-            if getattr(args, "all", False):
-                discovery_root = os.environ.get("DISCOVERY_ROOT")
-                if not discovery_root:
-                    print("Error: --all requires DISCOVERY_ROOT environment variable.")
-                    sys.exit(1)
-
-                projects = infra.discover_projects(discovery_root)
-                if not projects:
-                    print(f"No projects discovered in {discovery_root}")
-                    return
-
-                print(f"Discovered {len(projects)} projects for maintenance.")
-                for p in projects:
-                    print(f"Maintaining project: {p}")
-                    infra.run_maintenance(p)
-            else:
-                infra.run_maintenance(project_root)
+            # Default to full maintenance run
+            infra.run_maintenance(project_root)
     elif args.command == "purge":
-        c = spirit_rotation.purge_directives(
-            os.path.join(project_root, ".spirit/directives"),
-            os.path.join(project_root, ".spirit/directives/archive"),
+        c = core_rotation.purge_directives(
+            os.path.join(project_root, constants.INSTRUCTIONS_DIR),
+            os.path.join(project_root, constants.ARCHIVE_INSTRUCTIONS_DIR),
         )
         print(f"Purged {c} expired directives.")
     elif args.command == "rotate":
         if args.rotate_target == "messages":
-            if spirit_rotation.rotate_messages(
-                os.path.join(project_root, ".spirit/messages"),
-                os.path.join(project_root, ".spirit/messages/archive"),
+            if core_rotation.rotate_messages(
+                os.path.join(project_root, constants.COMMUNICATIONS_DIR),
+                os.path.join(project_root, constants.ARCHIVE_COMMUNICATIONS_DIR),
                 args.limit,
             ):
                 print("Messages rotated.")
         elif args.rotate_target == "nb":
-            spirit_rotation.perform_rotations(project_root)
+            core_rotation.perform_rotations(project_root)
             print("NB notes rotated.")
         elif args.rotate_target == "all":
-            spirit_rotation.perform_rotations(project_root)
+            core_rotation.perform_rotations(project_root)
             print("Full data rotation performed.")
         else:
             rotate_parser.print_help()
@@ -461,7 +447,7 @@ def main():
                 for name, info in registry.items()
             ]
             options.append("❌ Cancel")
-            choice = spirit_tui.get_gum_choose(options, "Select an agent to run:")
+            choice = core_tui.get_gum_choose(options, "Select an agent to run:")
             if not choice or choice == "❌ Cancel":
                 return
             args.name = choice.split(" ")[0]
@@ -470,7 +456,7 @@ def main():
             args.role = getattr(args, "role", None) or agent_info.get("role")
             args.desc = getattr(args, "desc", None) or agent_info.get("description")
 
-        spirit_agent.run_agent(
+        core_agent.run_agent(
             name=args.name,
             role=getattr(args, "role", None),
             description=getattr(args, "desc", None),
@@ -481,7 +467,7 @@ def main():
             cli_model=getattr(args, "cli_model", None),
         )
     elif args.command == "human":
-        spirit_tui.main()
+        core_tui.main()
     elif args.command == "system":
         handle_system(project_root, args.sys_action, getattr(args, "agent", None))
     elif args.command == "version":

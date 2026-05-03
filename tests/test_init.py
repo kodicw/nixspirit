@@ -1,9 +1,9 @@
 from unittest.mock import patch, MagicMock
-import jbot_init
+import core_init
 
 
 def test_init_project(tmp_path):
-    print(f"\nDEBUG: jbot_init file: {jbot_init.__file__}")
+    print(f"\nDEBUG: core_init file: {core_init.__file__}")
     project_dir = tmp_path / "new_org"
     project_dir.mkdir()
 
@@ -12,14 +12,14 @@ def test_init_project(tmp_path):
         mock_run.return_value = MagicMock(returncode=1)  # notebook doesn't exist
 
         # Mock get_memory_client
-        with patch("jbot_init.get_memory_client") as mock_nb:
-            success = jbot_init.init_project(str(project_dir), "test_org")
+        with patch("core_init.get_memory_client") as mock_nb:
+            success = core_init.init_project(str(project_dir), "test_org")
 
             assert success is True
-            assert (project_dir / ".jbot" / "agents.json").exists()
+            assert (project_dir / ".system" / "agents.json").exists()
             assert (project_dir / ".project_goal").exists()
             assert (project_dir / "flake.nix").exists()
-            assert (project_dir / "jbot_prompt.txt").exists()
+            assert (project_dir / "system_prompt.txt").exists()
             assert (project_dir / ".gitignore").exists()
             assert (project_dir / "VERSION").exists()
             assert (project_dir / "CHANGELOG.md").exists()

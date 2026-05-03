@@ -7,7 +7,7 @@ import subprocess
 
 # Ensure scripts directory is in sys.path
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_agent
+import core_agent
 
 
 @pytest.fixture
@@ -19,17 +19,17 @@ def agent_env(tmp_path):
         "Hello {{ agent.name }}, {{ goal }}. Tree: {{ realtime_state }}. RAG: {{ shared_history }}. Human: {{ human_input }}. Messages: {{ messages }}. Directives: {{ directives }}."
     )
 
-    (project_dir / ".project_goal").write_text("Maintain JBot")
+    (project_dir / ".project_goal").write_text("Maintain Autonomous System")
     (project_dir / "TASKS.md").write_text("## Active Tasks\n")
 
-    jbot_dir = project_dir / ".jbot"
-    jbot_dir.mkdir()
-    (jbot_dir / "agents.json").write_text(
+    system_dir = project_dir / ".system"
+    system_dir.mkdir()
+    (system_dir / "agents.json").write_text(
         json.dumps({"dev": {"role": "Lead", "description": "Dev"}})
     )
-    (jbot_dir / "queues").mkdir()
-    (jbot_dir / "messages").mkdir()
-    (jbot_dir / "directives").mkdir()
+    (system_dir / "queues").mkdir()
+    (system_dir / "messages").mkdir()
+    (system_dir / "directives").mkdir()
 
     env = {
         "AGENT_NAME": "dev",
@@ -44,23 +44,23 @@ def agent_env(tmp_path):
     with patch.dict(os.environ, env):
         # Mock infra calls to avoid nb dependency
         with (
-            patch("jbot_infra.get_note_content") as mock_get_note,
-            patch("jbot_infra.get_recent_logs", return_value=[]),
-            patch("jbot_infra.get_recent_messages", return_value=[]),
+            patch("core_infra.get_note_content") as mock_get_note,
+            patch("core_infra.get_recent_logs", return_value=[]),
+            patch("core_infra.get_recent_messages", return_value=[]),
             patch(
-                "jbot_tasks.get_task_board_markdown", return_value="## Tasks\n- Task 1"
+                "core_tasks.get_task_board_markdown", return_value="## Tasks\n- Task 1"
             ),
         ):
 
             def side_effect(query):
                 if query == "type:goal":
-                    return "Maintain JBot"
+                    return "Maintain Autonomous System"
                 if query == "input:human":
                     if os.path.exists(
-                        os.path.join(str(tmp_path), ".jbot/messages/human.txt")
+                        os.path.join(str(tmp_path), ".system/messages/human.txt")
                     ):
                         with open(
-                            os.path.join(str(tmp_path), ".jbot/messages/human.txt"), "r"
+                            os.path.join(str(tmp_path), ".system/messages/human.txt"), "r"
                         ) as f:
                             return f.read()
                     return "No active human feedback."
@@ -79,38 +79,38 @@ def test_agent_main(agent_env):
         mock_process.returncode = 0
         mock_popen.return_value = mock_process
 
-        jbot_agent.main()
+        core_agent.main()
 
         assert mock_popen.called
         args, kwargs = mock_popen.call_args
         cmd = args[0]
         prompt_arg = cmd[cmd.index("-p") + 1]
-        assert "Hello dev, Maintain JBot" in prompt_arg
+        assert "Hello dev, Maintain Autonomous System" in prompt_arg
 
 
 def test_agent_missing_env():
     with patch.dict(os.environ, {}, clear=True):
         with pytest.raises(SystemExit) as e:
-            jbot_agent.main()
+            core_agent.main()
         assert e.value.code == 1
 
 
 def test_agent_with_rag_and_human(agent_env):
     tmp_path = agent_env
-    jbot_dir = tmp_path / ".jbot"
+    system_dir = tmp_path / ".system"
 
     # Add human input
-    (jbot_dir / "messages" / "human.txt").write_text("Focus on tests")
+    (system_dir / "messages" / "human.txt").write_text("Focus on tests")
 
     # Add messages
-    (jbot_dir / "messages" / "msg1.txt").write_text("Hello team")
+    (system_dir / "messages" / "msg1.txt").write_text("Hello team")
 
     # Add directives
-    (jbot_dir / "directives" / "dir1.txt").write_text("Strict standards")
+    (system_dir / "directives" / "dir1.txt").write_text("Strict standards")
 
     with patch("subprocess.Popen") as mock_popen:
         # Mock logs
-        with patch("jbot_infra.get_recent_logs") as mock_logs:
+        with patch("core_infra.get_recent_logs") as mock_logs:
             mock_logs.return_value = [
                 {"agent": "ceo", "content": {"summary": "Vision set"}},
                 {"agent": "lead", "content": {"summary": "Code done"}},
@@ -122,7 +122,7 @@ def test_agent_with_rag_and_human(agent_env):
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            jbot_agent.main()
+            core_agent.main()
 
             args, _ = mock_popen.call_args
             cmd = args[0]
@@ -141,7 +141,7 @@ def test_agent_gemini_failure(agent_env):
         mock_popen.return_value = mock_process
 
         with pytest.raises(SystemExit) as e:
-            jbot_agent.main()
+            core_agent.main()
         assert e.value.code == 1
 
 
@@ -161,7 +161,7 @@ def test_agent_with_pre_commit_success(agent_env):
         mock_popen.return_value = mock_process
         mock_run.return_value = MagicMock(returncode=0)
 
-        jbot_agent.main()
+        core_agent.main()
 
         # Check if pre-commit was called.
         pre_commit_called = any(
@@ -187,7 +187,7 @@ def test_agent_with_pre_commit_failure(agent_env):
 
         mock_run.side_effect = subprocess.CalledProcessError(1, "pre-commit")
 
-        jbot_agent.main()
+        core_agent.main()
 
 
 def test_agent_git_tree(agent_env):
@@ -203,7 +203,7 @@ def test_agent_git_tree(agent_env):
         mock_process.returncode = 0
         mock_popen.return_value = mock_process
 
-        jbot_agent.main()
+        core_agent.main()
 
         args, _ = mock_popen.call_args
         cmd = args[0]
@@ -223,21 +223,22 @@ def test_agent_main_with_home(agent_env):
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            jbot_agent.main()
+            core_agent.main()
 
             # Verify files were created
             assert (tmp_path / ".gitconfig").exists()
             assert (tmp_path / ".nbrc").exists()
-            assert (tmp_path / ".nb" / "jbot").is_symlink()
+            assert (tmp_path / ".nb" / "knowledge").is_symlink()
+
 
 
 def test_agent_main_nb_prompt(agent_env):
     def side_effect(query):
-        if query == "#prompt":
+        if query == "type:prompt":
             return "This is a prompt from nb."
         return None
 
-    with patch("jbot_infra.get_note_content", side_effect=side_effect):
+    with patch("core_infra.get_note_content", side_effect=side_effect):
         with patch("subprocess.Popen") as mock_popen:
             mock_process = MagicMock()
             mock_process.stdout = ["Success response\n"]
@@ -245,7 +246,7 @@ def test_agent_main_nb_prompt(agent_env):
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
 
-            jbot_agent.main()
+            core_agent.main()
             args, _ = mock_popen.call_args
             cmd = args[0]
             prompt_arg = cmd[cmd.index("-p") + 1]
@@ -262,7 +263,7 @@ def test_agent_git_tree_large(agent_env):
             mock_process.wait.return_value = 0
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
-            jbot_agent.main()
+            core_agent.main()
             args, _ = mock_popen.call_args
             cmd = args[0]
             prompt = cmd[cmd.index("-p") + 1]
@@ -279,7 +280,7 @@ def test_agent_template_error(agent_env):
             mock_process.wait.return_value = 0
             mock_process.returncode = 0
             mock_popen.return_value = mock_process
-            jbot_agent.main()
+            core_agent.main()
             args, _ = mock_popen.call_args
             cmd = args[0]
             prompt = cmd[cmd.index("-p") + 1]
@@ -291,7 +292,7 @@ def test_agent_popen_exception(agent_env):
     with patch("subprocess.Popen") as mock_popen:
         mock_popen.side_effect = Exception("Popen failed")
         with pytest.raises(SystemExit) as e:
-            jbot_agent.main()
+            core_agent.main()
         assert e.value.code == 1
 
 
@@ -300,7 +301,7 @@ def test_main_block():
     import runpy
 
     script_path = os.path.join(
-        os.path.dirname(__file__), "..", "scripts", "jbot_agent.py"
+        os.path.dirname(__file__), "..", "scripts", "core_agent.py"
     )
     with pytest.raises(SystemExit):
         runpy.run_path(script_path, run_name="__main__")

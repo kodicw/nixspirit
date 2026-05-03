@@ -1,111 +1,31 @@
-# Contributing Guide: Nix Spirit Engineering Standards
+# Contributing Guide: Engineering Standards
 
-**Project:** Nix Spirit  
-**Status:** Flat Multi-Agent Organization  
-**Stack:** Nix (Flakes, Home Manager), Python 3, Systemd
+This project follows a **Flat Organization** model. This means:
 
----
+- **No Hierarchy:** We avoid nested project structures or "Sub-Organizations". Coordination happens via shared tasks and communication queues.
+- **Single-User Scope:** The entire organization operates within a single Linux user context. Multi-user isolation is handled at the OS/Home Manager level.
+- **Text-First Purity:** The ultimate source of truth is the filesystem and the knowledge base.
 
-## 1. Architectural Philosophy: Flat Organization
+## 🛠️ Standards & Practices
 
-Nix Spirit follows a **Flat Organization** model. This means:
-- **Internal Cohesion:** All components (agents, infra, scripts) live under a single Linux user account.
-- **No Hierarchy:** We avoid nested project structures or "Sub-Organizations". Coordination happens via a shared `TASKS.md` and `.spirit/messages/`.
-- **External Isolation:** Multi-project management is handled by creating *different* Linux users via NixOS/Home Manager.
+### 1. Versioning & Commits
+- **Semantic Versioning:** We follow SemVer for all releases.
+- **Conventional Commits:** All commits must follow the Conventional Commits specification (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`).
+- **No-Verify Commits:** Use `--no-verify` sparingly; it bypasses quality checks.
 
----
+### 2. Logging & Identity
+- **Standardized Logging:** All scripts must use the standardized logging format: `[$(date)] System (AgentName): Message`.
+- **Standard Identity:** Agents should use standard environment variables for identity (`NB_USER_NAME`, `NB_USER_EMAIL`).
 
-## 2. Code Quality Standards
+### 3. Knowledge Management (`nb`)
+- **Git-Backed Memory:** All thinking, reflections, and ADRs are stored in technical memory.
+- **Search First:** Search the knowledge base for existing research before initiating new technical audits.
+- **ADR Mandate:** Any structural change to the codebase MUST be preceded by an Architectural Decision Record note.
+- **ADR Links:** Reference ADRs directly in code comments (e.g., `# Context: [[nb:knowledge:adr-001]]`).
 
-### Nix (Infrastructure & Configuration)
-- **Formatting:** All `.nix` files must be formatted with `nixfmt` (RFC-style).
-- **Linting:** Use `statix check` to identify anti-patterns.
-- **Hermeticity:** Always use `lib.makeBinPath` in systemd services.
+## 🏗️ Technical Purity
 
-### Python (Agent Logic & Tooling)
-- **Formatting & Linting:** All Python code is formatted and linted with `ruff`.
-- **Style:** 
-  - Prefer clear, descriptive variable names.
-  - Use `argparse` for all CLI tools.
-  - Maintain a consistent logging format: `[$(date)] Nix Spirit (AgentName): Message`.
-
----
-
-## 3. Coordination & Task Management
-
-### TASKS.md (The Blackboard)
-All work MUST be tracked in `TASKS.md` using the following lifecycle:
-- **Backlog:** Unassigned ideas.
-- **Proposal:** Complex changes requiring research/design first.
-- **To Do / In Progress:** Active work assigned to an `(Agent: Name)`.
-- **In Review (Human):** HIL gatekeeping state. No file-mutating tools allowed.
-- **Done:** Verified and completed work.
-
-### Agent Communication
-- **Shared History:** Use `.spirit/memory.log` for high-level summaries of agent actions.
-- **Direct Messaging:** Use `.spirit/messages/` for agent-to-agent coordination.
-
----
-
-## 4. Development Workflow
-
-### Testing
-- **Unit Tests:** Located in `tests/`. Run via `nix flake check --no-build`.
-- **Integration Tests:** Use `nixos-test.nix` for full VM-based verification.
-- **Reproduction:** Bug fixes must include a reproduction test case.
-
-### Commit Messages
-Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
-- `feat(nix): ...`
-- `fix(agent): ...`
-- `docs: ...`
-- `chore(scripts): ...`
-
-### Git Hooks
-All hooks live in `.githooks/` and are automatically activated by the dev shell:
-- **`pre-commit`**: Checks Nix and Python formatting and linting.
-- **`commit-msg`**: Validates Conventional Commits format.
-- **`pre-push`**: Runs full suite of tests.
-
-### Directory Structure
-- `/scripts/`: All Python-based agent logic and utility scripts.
-- `/tests/`: Nix-based unit and integration tests.
-- `/docs/`: Long-form documentation and architectural archives.
-- `/examples/`: Example configurations for users.
-
----
-
-## 5. Engineering Standards (DRY)
-
-### Don't Repeat Yourself (DRY)
-- **Modularity First:** Always prioritize creating reusable functions and modules over duplicating logic.
-- **Audit:** Before adding new scripts, check if existing ones can be extended or refactored to handle the new task.
-- **Shared Logic:** For logic used across multiple agents (e.g., logging, task parsing), use shared utility modules in the `scripts/` directory.
-
-### Unix Philosophy
-- **Do one thing and do it well:** Break down complex scripts into smaller, purpose-built components.
-- **Work together:** Design scripts to be part of a pipeline (e.g., one to rotate, one to purge, one to display).
-- **Text Streams:** Use simple, human-readable text (Markdown, JSON) as the primary interface between agents and scripts.
-
-### Self-Documenting Code
-- **Meaningful Naming:** Choose variable and function names that describe "what" and "why", not just "how".
-- **Small Functions:** Break down complex logic into small, single-purpose functions with clear inputs and outputs.
-- **Clarity > Cleverness:** Avoid obscure language features or "hacks". If a piece of code needs a long comment to explain it, it should probably be refactored to be clearer.
-- **Type Safety:** Use Python type hints and clean Nix structures to provide implicit documentation.
-
-### Organizational Memory (nb)
-- **Knowledge Base:** All major architectural decisions (ADRs) must be recorded in the `spirit` notebook using `nb spirit:add`.
-- **Search First:** Use `nb spirit:q` to search the knowledge base for existing research before initiating new technical audits.
-- **Verification:** Task results and verified technical benchmarks should be exported to the knowledge base to ensure long-term persistence.
-
-### Purity Guard (just / deadnix)
-- **Centralized Workflows:** Use the `justfile` for all common tasks (formatting, linting, testing).
-- **Zero Technical Debt:** Every commit should pass `just audit`.
-- **Nix Purity:** Use `deadnix` (via `just prune`) to find and remove unused Nix code. Architectural simplicity is maintained by keeping the codebase lean.
-
-### Information Density
-- **Executable Metadata:** Treat documentation as executable law.
-- **ADR Links:** Reference `nb` ADRs directly in code comments (e.g., `# Context: [[nb:spirit:adr-001]]`).
-- **Mermaid-as-Code:** Every complex script should have an accompanying `.mermaid` file or Mermaid docstring block.
-- **Type-Driven Docs:** 100% usage of Python Type Hints and Nix Lib types. Use pydocstyle block structures.
-- **Structure as Code:** Define JSON Schemas for all state files (e.g., `agents.json`) to prevent data hallucination.
+- **100% Type Hints:** All Python code must use 100% type hinting.
+- **Docstrings:** Every function must have a docstring describing its Purpose, Inputs, and Outputs.
+- **Verification:** Changes are not complete until they are verified by the automated test suite.
+- **Purity Audit:** Run `just audit` before proposing any major change.

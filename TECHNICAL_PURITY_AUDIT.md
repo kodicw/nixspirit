@@ -1,36 +1,27 @@
-# Technical Purity Audit - 2026-04-26
+# Technical Purity Audit - 2026-05-03
 
-## 🚩 Critical Violations (DRY & Modularity)
+## 🚩 Status of Previous Violations
 
 1.  **Duplicate Code (DRY Violation)**:
-    *   `get_recent_messages` is implemented identically in both `scripts/jbot_utils.py` and `scripts/jbot_infra.py`.
-    *   `get_recent_messages` is called from `jbot_cli.py`, `jbot_utils.py`, and `jbot_agent.py`.
+    *   `get_recent_messages` has been consolidated and is now primarily managed via `core_infra.py`.
 
 2.  **Circular Dependency**:
-    *   `jbot_infra.py` imports `jbot_utils`.
-    *   `jbot_utils.py`'s `generate_dashboard` function imports `jbot_infra` locally to avoid a circular import. This indicates that `generate_dashboard` (a high-level organizational task) is misplaced in a low-level utility module.
+    *   The `core_utils.py` and `core_infra.py` relationship has been clarified. Centralized constants in `core_constants.py` helped decouple these modules.
 
 3.  **Inefficient Context Assembly**:
-    *   In `jbot_cli.py`, the `get_status` function calls `tasks.parse_tasks()` twice unnecessarily, increasing the load on the `nb` knowledge base.
+    *   `core_cli.py` has been refactored to optimize task parsing and status reporting.
 
-4.  **Tangled Responsibilities**:
-    *   `jbot_utils.py` is currently a mix of low-level stable note updates and high-level markdown generation.
-    *   `jbot_cli.py` contains significant business logic for version management and system prompt resolution that could be further modularized.
+4.  **Generic Terminology Refactor**:
+    *   **Status: COMPLETED.** All `spirit` and `jbot` references have been replaced with generic terms like `core`, `system`, and `knowledge`. All hardcoded paths and environment variables have been extracted to `core_constants.py`.
 
-## 🛠️ Recommended Remediation Plan
+## 🛠️ Future Remediation Plan
 
-1.  **Consolidate Messaging**:
-    *   Move `get_recent_messages` to `jbot_core.py` (as it's a core filesystem/data retrieval task) or `jbot_infra.py` (and remove it from `jbot_utils.py`).
+1.  **Continuous Decoupling**:
+    *   Monitor the growth of `core_logic.py` and consider splitting it into smaller, more focused modules (e.g., `core_git.py`, `core_files.py`) if it exceeds 1000 lines.
     
-2.  **Refactor Dashboard Generation**:
-    *   Move `generate_dashboard` from `jbot_utils.py` to `jbot_infra.py` or a dedicated `jbot_dashboard.py` module.
-    
-3.  **Optimize CLI**:
-    *   Refactor `get_status` in `jbot_cli.py` to use a single `tasks_data` object.
-    
-4.  **Modularize Versioning**:
-    *   Move `handle_version` logic from `jbot_cli.py` to a dedicated `jbot_version.py` or into `jbot_core.py`.
+2.  **Schema Validation**:
+    *   Implement formal JSON schema validation for `agents.json` and other state files to prevent structural drift.
 
 ## 🤖 Agent Verification
-*   Agents seem to be following their roles, but the underlying infrastructure they use is becoming "muddy". 
-*   The `lead` agent should be tasked with this refactor to ensure the "hands of the project" are maintaining technical purity.
+*   The system now uses project-agnostic terminology, enabling it to be easily rebranded or used as a template for new organizations.
+*   The `lead` agent should continue to enforce technical purity by running `just audit` before every milestone.

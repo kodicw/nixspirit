@@ -1,21 +1,21 @@
 graph TD
-    CLI[spirit_cli.py] --> INIT[init: spirit_init]
+    CLI[core_cli.py] --> INIT[init: core_init]
     CLI --> STATUS[status: infra.get_project_summary]
-    CLI --> TASK[task: spirit_tasks]
+    CLI --> TASK[task: core_tasks]
     CLI --> LOGS[logs: infra.get_recent_logs]
     CLI --> MSG[messages: infra.get_recent_messages]
     CLI --> SEND[send-message: infra.send_message]
     CLI --> MAINT[maintenance: infra.run_maintenance]
-    CLI --> PURGE[purge: spirit_rotation.purge_directives]
-    CLI --> ROTATE[rotate: spirit_rotation]
+    CLI --> PURGE[purge: core_rotation.purge_directives]
+    CLI --> ROTATE[rotate: core_rotation]
     CLI --> DASH[dashboard: utils.generate_dashboard]
-    CLI --> AGENT[agent: spirit_agent.run_agent]
-    CLI --> HUMAN[human: spirit_tui]
+    CLI --> AGENT[agent: core_agent.run_agent]
+    CLI --> HUMAN[human: core_tui]
     CLI --> SYSTEM[system: handle_system]
     CLI --> VERSION[version: handle_version]
 
     subgraph "Internal Logic"
-        STATUS --> core[spirit_core]
+        STATUS --> core[core_core]
         VERSION --> core
-        SYSTEM --> spirit_agent
+        SYSTEM --> core_agent
     end

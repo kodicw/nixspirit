@@ -5,13 +5,13 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.getcwd(), "scripts"))
-import jbot_tasks as tasks
+import core_tasks as tasks
 
 
 def test_parse_tasks():
     # Mock vision note
     with patch(
-        "jbot_infra.get_note_content",
+        "core_infra.get_note_content",
         return_value="## Strategic Vision\n> Autonomous AI engineering.",
     ):
         # Mock granular tasks
@@ -45,7 +45,7 @@ def test_parse_tasks():
                 "agent": "engineer",
             },
         ]
-        with patch("jbot_tasks._get_granular_tasks", return_value=mock_tasks):
+        with patch("core_tasks._get_granular_tasks", return_value=mock_tasks):
             data = tasks.parse_tasks()
             assert data["vision"] == "Autonomous AI engineering."
             assert "- [ ] **Task 1** (Agent: lead)" in data["active"]
@@ -58,7 +58,7 @@ def test_parse_tasks():
 
 
 def test_get_granular_tasks():
-    with patch("jbot_tasks.get_memory_client") as mock_nb_class:
+    with patch("core_tasks.get_memory_client") as mock_nb_class:
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
@@ -89,7 +89,7 @@ def test_get_granular_tasks():
 
 
 def test_add_task():
-    with patch("jbot_tasks.get_memory_client") as mock_nb_class:
+    with patch("core_tasks.get_memory_client") as mock_nb_class:
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
         mock_client.add.return_value = "100"
@@ -112,8 +112,8 @@ def test_update_task():
             "agent": "lead",
         }
     ]
-    with patch("jbot_tasks._get_granular_tasks", return_value=mock_tasks):
-        with patch("jbot_tasks.get_memory_client") as mock_nb_class:
+    with patch("core_tasks._get_granular_tasks", return_value=mock_tasks):
+        with patch("core_tasks.get_memory_client") as mock_nb_class:
             mock_client = MagicMock()
             mock_nb_class.return_value = mock_client
             mock_client.edit.return_value = True
@@ -136,8 +136,8 @@ def test_complete_task():
             "agent": "lead",
         }
     ]
-    with patch("jbot_tasks._get_granular_tasks", return_value=mock_tasks):
-        with patch("jbot_tasks.get_memory_client") as mock_nb_class:
+    with patch("core_tasks._get_granular_tasks", return_value=mock_tasks):
+        with patch("core_tasks.get_memory_client") as mock_nb_class:
             mock_client = MagicMock()
             mock_nb_class.return_value = mock_client
             mock_client.edit.return_value = True
@@ -151,9 +151,9 @@ def test_complete_task():
 
 def test_parse_tasks_fallback():
     # Test fallback to old task board if granular tasks are empty
-    with patch("jbot_tasks._get_granular_tasks", return_value=[]):
+    with patch("core_tasks._get_granular_tasks", return_value=[]):
         with patch(
-            "jbot_infra.get_note_content",
+            "core_infra.get_note_content",
             side_effect=[
                 None,  # Vision
                 "## Active Tasks\n- [ ] **Old Task**\n",  # Tasks
@@ -166,14 +166,14 @@ def test_parse_tasks_fallback():
 def test_parse_tasks_vision_fallback():
     # Test fallback vision parsing logic (lines 69-73)
     vision_note = "## Strategic Vision\nVision text here"
-    with patch("jbot_infra.get_note_content", return_value=vision_note):
-        with patch("jbot_tasks._get_granular_tasks", return_value=[]):
+    with patch("core_infra.get_note_content", return_value=vision_note):
+        with patch("core_tasks._get_granular_tasks", return_value=[]):
             data = tasks.parse_tasks()
             assert data["vision"] == "Vision text here"
 
 
 def test_get_granular_tasks_missing_data():
-    with patch("jbot_tasks.get_memory_client") as mock_nb_class:
+    with patch("core_tasks.get_memory_client") as mock_nb_class:
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
@@ -197,8 +197,8 @@ def test_get_granular_tasks_missing_data():
 def test_parse_tasks_old_board_sections():
     # Test lines 123-126, 135, 137, 139
     old_board = "- [x] pre-active completed\n## Active Tasks\n- [ ] A\n## Backlog\n- [ ] B\n## Completed\n- [x] C\n- [X] D"
-    with patch("jbot_tasks._get_granular_tasks", return_value=[]):
-        with patch("jbot_infra.get_note_content", side_effect=[None, old_board]):
+    with patch("core_tasks._get_granular_tasks", return_value=[]):
+        with patch("core_infra.get_note_content", side_effect=[None, old_board]):
             data = tasks.parse_tasks()
             assert "- [ ] A" in data["active"]
             assert "- [ ] B" in data["backlog"]
@@ -208,7 +208,7 @@ def test_parse_tasks_old_board_sections():
 
 def test_update_complete_not_found():
     # Test lines 181-182, 216-220
-    with patch("jbot_tasks._get_granular_tasks", return_value=[]):
+    with patch("core_tasks._get_granular_tasks", return_value=[]):
         assert tasks.update_task("missing") is False
         assert tasks.complete_task("missing") is False
 
@@ -216,7 +216,7 @@ def test_update_complete_not_found():
 def test_get_task_board_markdown_full():
     # Test lines 226-227, 231, 238, 250
     with patch(
-        "jbot_tasks.parse_tasks",
+        "core_tasks.parse_tasks",
         return_value={
             "vision": "World peace.",
             "active": ["- [ ] Task A"],
@@ -236,7 +236,7 @@ def test_get_task_board_markdown_full():
 def test_get_task_board_markdown_empty():
     # Test lines 233, 240, 252
     with patch(
-        "jbot_tasks.parse_tasks",
+        "core_tasks.parse_tasks",
         return_value={
             "vision": None,
             "active": [],

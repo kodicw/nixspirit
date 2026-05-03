@@ -1,4 +1,4 @@
-# Nix Spirit Technical Excellence Justfile
+# Autonomous Organization Core Justfile
 set shell := ["bash", "-c"]
 
 # Perform a full Purity Audit
@@ -30,11 +30,11 @@ check:
 test: check
     pytest --cov=scripts tests/
 
-# Synchronize long-term memory to nb
+# Synchronize long-term memory to knowledge base
 sync-memory:
-    nb nix-spirit:sync
+    nb knowledge:sync
 
 # Initialize a new agent run context
 init-run:
-    nb nix-spirit:q "technical excellence"
+    nb knowledge:q "technical purity"
     just audit

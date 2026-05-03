@@ -1,8 +1,13 @@
-_: {
-  # Example configuration for a JBot "Company" structure.
+{ lib, ... }:
+let
+  constants = import ../modules/constants.nix { inherit lib; };
+  namespace = constants.namespace;
+in
+{
+  # Example configuration for a core system "Company" structure.
   # This can be included in your home.nix or another Home Manager module.
 
-  programs.jbot = {
+  programs.${namespace} = {
     enable = true;
     agents = {
       # The CEO agent oversees project goals and assigns tasks.

@@ -1,12 +1,13 @@
-# Context: [[nb:spirit:adr-6]], [[nb:spirit:adr-57]]
+# Context: [[nb:knowledge:adr-6]], [[nb:knowledge:adr-57]]
 import os
 import re
 import glob
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
-import spirit_core as core
-from spirit_memory_interface import get_memory_client
+import core_logic as core
+import constants
+from core_memory_interface import get_memory_client
 
 
 def update_note_stably(title: str, content: str, tags: List[str]) -> bool:
@@ -31,10 +32,10 @@ def update_note_stably(title: str, content: str, tags: List[str]) -> bool:
 
 
 def get_recent_adrs(count: int = 5) -> List[Dict[str, str]]:
-    """Retrieve the most recent ADRs from the nb knowledge base."""
+    """Retrieve the most recent ADRs from the knowledge base."""
     try:
         client = get_memory_client()
-        notes = client.ls(tags=["type:adr"])
+        notes = client.ls(tags=[constants.TAG_ADR])
 
         def sort_key(note):
             try:
@@ -63,14 +64,14 @@ def get_directive_expiration(
     """Extracts expiration date from content or filename."""
     # 1. Check content for "Expiration: YYYY-MM-DD"
     content_exp_match = re.search(
-        r"Expiration:\s*(\d{4}-\d{2}-\d{2})", content, re.IGNORECASE
+        constants.EXPIRATION_PATTERN, content, re.IGNORECASE
     )
     if content_exp_match:
         return content_exp_match.group(1)
 
     # 2. Check filename for "YYYY-MM-DD"
     if filename:
-        filename_exp_match = re.search(r"(\d{4}-\d{2}-\d{2})", filename)
+        filename_exp_match = re.search(constants.DATE_PATTERN, filename)
         if filename_exp_match:
             return filename_exp_match.group(1)
 
@@ -83,16 +84,16 @@ def is_directive_expired(content: str, filename: Optional[str] = None) -> bool:
     if not exp_date:
         return False
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now().strftime(constants.DATE_FORMAT)
     return today > exp_date
 
 
 def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") -> bool:
     """Generates a markdown dashboard summarizing the project status.
 
-    Context: [[nb:spirit:adr-57]]
+    Context: [[nb:knowledge:adr-57]]
     """
-    import spirit_infra as infra
+    import core_infra as infra
 
     try:
         summary = infra.get_project_summary(project_dir)
@@ -114,17 +115,17 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
             "metrics": None,
             "git_status": "Unknown",
             "nix_metadata": "Unknown",
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "timestamp": datetime.now().strftime(constants.DATETIME_FORMAT),
         }
         tasks_data = summary["tasks"]
 
-    dashboard_content = "# spirit Dashboard\n\n"
-    dashboard_content += f"*Last Updated: {summary['timestamp']}*\n\n"
+    dashboard_content = constants.DASHBOARD_HEADER.format(name=constants.DEFAULT_SYSTEM_NAME)
+    dashboard_content += constants.DASHBOARD_LAST_UPDATED.format(timestamp=summary['timestamp'])
 
-    dashboard_content += "## 🎯 Strategic Vision\n"
+    dashboard_content += constants.DASHBOARD_VISION_SECTION
     dashboard_content += f"> {summary['vision']}\n\n"
 
-    dashboard_content += "## 👥 Team Roster\n"
+    dashboard_content += constants.DASHBOARD_TEAM_SECTION
     agents = summary["team"]
     if agents:
         dashboard_content += (
@@ -137,28 +138,28 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
         dashboard_content += "\n"
 
     if tasks_data.get("proposal"):
-        dashboard_content += "## 💡 Proposed Tasks\n"
+        dashboard_content += constants.DASHBOARD_PROPOSAL_SECTION
         for task in tasks_data["proposal"][:10]:
-            match = re.search(r"\(Agent:\s*([^)]+)\)", task)
+            match = re.search(constants.AGENT_TAG_PATTERN, task)
             agent_str = f" [{match.group(1)}]" if match else ""
-            task_clean = re.sub(r"\s*\(Agent:\s*[^)]+\)", "", task)
+            task_clean = re.sub(constants.AGENT_TAG_PATTERN, "", task)
             dashboard_content += f"{task_clean}{agent_str}\n"
         dashboard_content += "\n"
 
-    dashboard_content += "## 🚀 Active Tasks\n"
+    dashboard_content += constants.DASHBOARD_ACTIVE_SECTION
     active_tasks = [t for t in tasks_data["active"] if "- [ ]" in t]
     if active_tasks:
         for task in active_tasks[:10]:
-            match = re.search(r"\(Agent:\s*([^)]+)\)", task)
+            match = re.search(constants.AGENT_TAG_PATTERN, task)
             agent_str = f" [{match.group(1)}]" if match else ""
-            task_clean = re.sub(r"\s*\(Agent:\s*[^)]+\)", "", task)
+            task_clean = re.sub(constants.AGENT_TAG_PATTERN, "", task)
             dashboard_content += f"{task_clean}{agent_str}\n"
         dashboard_content += "\n"
     else:
         dashboard_content += "No active tasks.\n\n"
 
     if tasks_data["backlog"]:
-        dashboard_content += "## 📦 Backlog Highlights\n"
+        dashboard_content += constants.DASHBOARD_BACKLOG_SECTION
         for task in tasks_data["backlog"][:5]:
             dashboard_content += f"{task}\n"
         dashboard_content += "\n"
@@ -170,12 +171,12 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
             completed_tasks.append(stripped)
 
     if completed_tasks:
-        dashboard_content += "## ✅ Recently Completed\n"
+        dashboard_content += constants.DASHBOARD_COMPLETED_SECTION
         for task in completed_tasks[:5]:
             dashboard_content += f"{task}\n"
         dashboard_content += "\n"
 
-    dashboard_content += "## 📜 Recent ADRs\n"
+    dashboard_content += constants.DASHBOARD_ADR_SECTION
     if summary["adrs"]:
         for adr in summary["adrs"]:
             dashboard_content += f"- [[nb:{adr['id']}]] {adr['title']}\n"
@@ -183,7 +184,7 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
     else:
         dashboard_content += "No ADRs found.\n\n"
 
-    dashboard_content += "## 💬 Recent Messages\n"
+    dashboard_content += constants.DASHBOARD_MESSAGES_SECTION
     if summary["recent_messages"]:
         for m in reversed(summary["recent_messages"]):
             headers = infra.parse_message_headers(m["content"])
@@ -197,12 +198,12 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
                 dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([[nb:{note_id}]])\n"
             else:
                 # Legacy file link
-                dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([{m['filename']}](.spirit/messages/{m['filename']}))\n"
+                dashboard_content += f"- **[{headers['from']}]** {headers['subject']}{reply_str} ([{m['filename']}]({constants.STATE_DIR}/messages/{m['filename']}))\n"
         dashboard_content += "\n"
     else:
         dashboard_content += "No recent messages.\n\n"
 
-    dashboard_content += "## 📊 Architectural Diagrams\n"
+    dashboard_content += constants.DASHBOARD_DIAGRAMS_SECTION
     mermaid_files = glob.glob(os.path.join(project_dir, "scripts/*.mermaid"))
     if mermaid_files:
         for mermaid_file in sorted(mermaid_files):
@@ -218,7 +219,7 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
             dashboard_content += content + "\n"
             dashboard_content += "```\n\n"
 
-    dashboard_content += "## 📈 Status & Progress\n"
+    dashboard_content += constants.DASHBOARD_STATUS_SECTION
     dashboard_content += f"- **Tasks Completed:** {tasks_data['done_count']}\n"
     dashboard_content += f"- **Milestones Achieved:** {len(summary['milestones'])}\n\n"
 
@@ -239,7 +240,7 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
             f"- **Completion Ratio:** {m.get('completion_ratio', 0.0):.1f}%\n\n"
         )
 
-    dashboard_content += "## ✅ Recent Milestones\n"
+    dashboard_content += constants.DASHBOARD_MILESTONES_SECTION
     if summary["milestones"]:
         for milestone in summary["milestones"]:
             dashboard_content += f"{milestone}\n"

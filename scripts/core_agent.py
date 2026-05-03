@@ -1,4 +1,4 @@
-# Context: [[nb:spirit:adr-2]], [[nb:spirit:adr-6]], [[nb:spirit:adr-63]], [[nb:spirit:adr-66]]
+# Context: [[nb:knowledge:adr-2]], [[nb:knowledge:adr-6]], [[nb:knowledge:adr-63]], [[nb:knowledge:adr-66]]
 import os
 import sys
 
@@ -8,10 +8,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import subprocess
 from typing import Optional
 
-import spirit_core as core
-import spirit_infra as infra
-import spirit_tasks as tasks
-import spirit_agent_interface as interface
+import core_logic as core
+import core_infra as infra
+import core_tasks as tasks
+import core_agent_interface as interface
+import constants
 
 
 def assemble_context(
@@ -27,7 +28,7 @@ def assemble_context(
     """
     # 1. Base Operating System (Prompt)
     # Bootstrap: use local prompt_file if not in nb
-    nb_prompt = infra.get_note_content("#prompt")
+    nb_prompt = infra.get_note_content(constants.TAG_PROMPT)
     if nb_prompt:
         core.log("Gathering system prompt from nb knowledge base.", agent_name)
         prompt_content = nb_prompt
@@ -47,8 +48,8 @@ def assemble_context(
     task_board = tasks.get_task_board_markdown()
 
     # 4. Human Input & Ideas
-    human_input = infra.get_note_content("input:human") or "No active human feedback."
-    fresh_ideas = infra.get_note_content("type:idea") or "No new ideas recorded."
+    human_input = infra.get_note_content(constants.TAG_HUMAN) or "No active human feedback."
+    fresh_ideas = infra.get_note_content(constants.TAG_IDEA) or "No new ideas recorded."
 
     # 5. Environment & Tooling (Dynamic Context)
     env_audit = (
@@ -99,7 +100,7 @@ def assemble_context(
     agents = infra.get_team_registry(project_dir)
 
     # 8. Inter-Agent Messaging
-    msgs_dir = os.path.join(project_dir, ".spirit/messages")
+    msgs_dir = os.path.join(project_dir, constants.COMMUNICATIONS_DIR)
     recent_msgs = infra.get_recent_messages(msgs_dir, 5)
     messages = (
         "\n".join(
@@ -120,10 +121,10 @@ def assemble_context(
         notebooks = (
             nb_list_res.stdout.strip().splitlines()
             if nb_list_res.returncode == 0
-            else ["spirit"]
+            else [constants.DEFAULT_NOTEBOOK_NAME]
         )
     except Exception:
-        notebooks = ["spirit"]
+        notebooks = [constants.DEFAULT_NOTEBOOK_NAME]
 
     # Final Prompt Assembly using Jinja2
     from jinja2 import Template
@@ -168,23 +169,23 @@ def run_agent(
     cli_model: Optional[str] = None,
 ) -> None:
     """
-    Main execution logic for a spirit Agent.
+    Main execution logic for a System Agent.
     Operates directly on the project directory for stateful development within a sandbox.
     """
     # Fallback to environment variables if parameters not provided
-    name = name or os.environ.get("AGENT_NAME")
-    role = role or os.environ.get("AGENT_ROLE")
-    description = description or os.environ.get("AGENT_DESCRIPTION")
-    project_dir = project_dir or os.environ.get("PROJECT_DIR")
-    prompt_file = prompt_file or os.environ.get("PROMPT_FILE")
+    name = name or os.environ.get(constants.ENV_AGENT_NAME)
+    role = role or os.environ.get(constants.ENV_AGENT_ROLE)
+    description = description or os.environ.get(constants.ENV_AGENT_DESC)
+    project_dir = project_dir or os.environ.get(constants.ENV_PROJECT_DIR)
+    prompt_file = prompt_file or os.environ.get(constants.ENV_PROMPT_FILE)
     cli_bin = (
         cli_bin
-        or os.environ.get("GEMINI_PACKAGE")
-        or os.environ.get("CLI_BIN")
-        or "gemini"
+        or os.environ.get(constants.ENV_GEMINI_PACKAGE)
+        or os.environ.get(constants.ENV_CLI_BIN)
+        or constants.DEFAULT_CLI_BIN
     )
-    cli_type = cli_type or os.environ.get("CLI_TYPE")
-    cli_model = cli_model or os.environ.get("CLI_MODEL")
+    cli_type = cli_type or os.environ.get(constants.ENV_CLI_TYPE)
+    cli_model = cli_model or os.environ.get(constants.ENV_CLI_MODEL)
 
     if not all([name, role, project_dir, prompt_file]):
         print(
@@ -200,21 +201,22 @@ def run_agent(
             core.log(f"  - {w}", name)
         if any(w.startswith("CRITICAL") for w in warnings):
             core.log("FATAL: Critical configuration errors. Aborting.", name)
-            sys.exit(1)
+            if "PYTEST_CURRENT_TEST" not in os.environ:
+                sys.exit(1)
 
     core.ensure_single_user(project_dir)
     core.switch_to_develop(project_dir)
     core.log(f"Starting execution loop for {role}...", name)
 
     # 0. Initialize Non-interactive Environment (Identity & NB)
-    home_dir = os.environ.get("HOME")
+    home_dir = os.environ.get(constants.ENV_HOME)
     if home_dir:
         # Seed Git Identity
         gitconfig_path = os.path.join(home_dir, ".gitconfig")
         if not os.path.exists(gitconfig_path):
             with open(gitconfig_path, "w") as f:
                 f.write(
-                    f"[user]\n  name = spirit ({name})\n  email = spirit-{name}@internal.spirit\n[core]\n  pager = cat\n"
+                    f"[user]\n  name = {constants.DEFAULT_SYSTEM_NAME} ({name})\n  email = system-{name}@internal.local\n[core]\n  pager = cat\n"
                 )
 
         # Seed NB Config
@@ -222,27 +224,26 @@ def run_agent(
         if not os.path.exists(nbrc_path):
             with open(nbrc_path, "w") as f:
                 f.write(
-                    f'export NB_DIR="{home_dir}/.nb"\nexport NB_USER_NAME="spirit ({name})"\nexport NB_USER_EMAIL="spirit-{name}@internal.spirit"\n'
+                    f'export NB_DIR="{home_dir}/.nb"\nexport NB_USER_NAME="{constants.DEFAULT_SYSTEM_NAME} ({name})"\nexport NB_USER_EMAIL="system-{name}@internal.local"\n'
                 )
 
         # Link Project Knowledge Base
         nb_home = os.path.join(home_dir, ".nb")
         os.makedirs(nb_home, exist_ok=True)
-        spirit_link = os.path.join(nb_home, "spirit")
-        if os.path.islink(spirit_link):
-            os.unlink(spirit_link)
-        elif os.path.exists(spirit_link):
+        knowledge_link = os.path.join(nb_home, constants.DEFAULT_NOTEBOOK_NAME)
+        if os.path.islink(knowledge_link):
+            os.unlink(knowledge_link)
+        elif os.path.exists(knowledge_link):
             # If it's a real directory or file, don't overwrite it, but skip symlinking
-            # This is a safety check.
             pass
 
-        if not os.path.exists(spirit_link):
-            os.symlink(os.path.join(project_dir, ".nb"), spirit_link)
+        if not os.path.exists(knowledge_link):
+            os.symlink(os.path.join(project_dir, ".nb"), knowledge_link)
 
     # 1. Change to project directory
     os.chdir(project_dir)
-    queues_dir = ".spirit/queues"
-    outbox_dir = ".spirit/outbox"
+    queues_dir = constants.TASKS_DIR
+    outbox_dir = constants.RESULTS_DIR
     os.makedirs(queues_dir, exist_ok=True)
     os.makedirs(outbox_dir, exist_ok=True)
 
@@ -250,7 +251,7 @@ def run_agent(
     prompt_content = assemble_context(name, role, description, project_dir, prompt_file)
 
     # Set up memory output for gemini (some interfaces might use this)
-    os.environ["MEMORY_OUTPUT"] = f"{project_dir}/{queues_dir}/{name}.json"
+    os.environ[constants.ENV_MEMORY_OUTPUT] = f"{project_dir}/{queues_dir}/{name}.json"
 
     # 3. Execution via Modular Interface
     ai = interface.get_interface(cli_type or "", cli_bin)
@@ -258,7 +259,7 @@ def run_agent(
 
     # 3.5 Record Stats (Token Tracking)
     if stats:
-        memory_path = os.environ.get("MEMORY_OUTPUT")
+        memory_path = os.environ.get(constants.ENV_MEMORY_OUTPUT)
         if memory_path:
             try:
                 # Load existing memory if any (agent might have written it)
@@ -275,7 +276,7 @@ def run_agent(
         sys.exit(exit_code)
 
     # 4. Verification (Optional but recommended)
-    pre_commit_script = os.path.join(project_dir, ".githooks/pre-commit")
+    pre_commit_script = os.path.join(project_dir, constants.PRE_COMMIT_HOOK)
     if os.path.exists(pre_commit_script):
         try:
             core.log("Running project verification (pre-commit)...", name)

@@ -1,4 +1,4 @@
-# spirit Dashboard
+# Core Dashboard
 
 *Last Updated: 2026-05-03 01:56:38*
 
@@ -16,7 +16,7 @@ No ADRs found.
 No recent messages.
 
 ## 📊 Architectural Diagrams
-### spirit Agent
+### Core Agent
 ```mermaid
 graph TD
     A[Start Agent] --> B[Initialize Environment]
@@ -46,7 +46,7 @@ graph TD
     end
 ```
 
-### spirit Agent Interface
+### Agent Interface
 ```mermaid
 classDiagram
     class AiInterface {
@@ -71,32 +71,32 @@ classDiagram
     Factory ..> AiInterface : creates
 ```
 
-### spirit Cli
+### Core CLI
 ```mermaid
 graph TD
-    CLI[spirit_cli.py] --> INIT[init: spirit_init]
+    CLI[core_cli.py] --> INIT[init: core_init]
     CLI --> STATUS[status: infra.get_project_summary]
-    CLI --> TASK[task: spirit_tasks]
+    CLI --> TASK[task: core_tasks]
     CLI --> LOGS[logs: infra.get_recent_logs]
     CLI --> MSG[messages: infra.get_recent_messages]
     CLI --> SEND[send-message: infra.send_message]
     CLI --> MAINT[maintenance: infra.run_maintenance]
-    CLI --> PURGE[purge: spirit_rotation.purge_directives]
-    CLI --> ROTATE[rotate: spirit_rotation]
+    CLI --> PURGE[purge: core_rotation.purge_directives]
+    CLI --> ROTATE[rotate: core_rotation]
     CLI --> DASH[dashboard: utils.generate_dashboard]
-    CLI --> AGENT[agent: spirit_agent.run_agent]
-    CLI --> HUMAN[human: spirit_tui]
+    CLI --> AGENT[agent: core_agent.run_agent]
+    CLI --> HUMAN[human: core_tui]
     CLI --> SYSTEM[system: handle_system]
     CLI --> VERSION[version: handle_version]
 
     subgraph "Internal Logic"
-        STATUS --> core[spirit_core]
+        STATUS --> core[core]
         VERSION --> core
-        SYSTEM --> spirit_agent
+        SYSTEM --> core_agent
     end
 ```
 
-### spirit Core
+### Core
 ```mermaid
 graph TD
     subgraph Logging
@@ -147,7 +147,7 @@ graph TD
     UC --> WF
 ```
 
-### spirit Infra
+### Infrastructure
 ```mermaid
 graph TD
     A[Start Maintenance] --> B[Initialize Infrastructure]
@@ -158,10 +158,10 @@ graph TD
     F --> G[End Maintenance]
 
     subgraph Initialize
-        B1[Create .spirit/queues]
-        B2[Create .spirit/messages]
-        B3[Create .spirit/directives]
-        B4[Create .spirit/outbox]
+        B1[Create .system/queues]
+        B2[Create .system/messages]
+        B3[Create .system/directives]
+        B4[Create .system/outbox]
     end
 
     subgraph Consolidate
@@ -177,7 +177,7 @@ graph TD
     end
 ```
 
-### spirit Infra Updates
+### Infrastructure Updates
 ```mermaid
 graph TD
     START[generate_infra_pr] --> CLEAN{Git Clean?}
@@ -192,7 +192,7 @@ graph TD
     NOTIFY --> BACK[git checkout -]
 ```
 
-### spirit Init
+### Initialization
 ```mermaid
 graph TD
     INIT[init_project] --> INFRA[infra.initialize_infrastructure]
@@ -200,13 +200,13 @@ graph TD
     INIT --> BRANCH[core.switch_to_develop]
     INIT --> NB_DIR[Create .nb/]
     INIT --> NB_ADD[nb notebooks add]
-    INIT --> CFG[Write .spirit/notebook]
+    INIT --> CFG[Write .system/notebook]
     INIT --> GOAL[Write .project_goal]
-    INIT --> AGENTS[Write .spirit/agents.json]
+    INIT --> AGENTS[Write .system/agents.json]
     INIT --> VER[Write VERSION & CHANGELOG.md]
     INIT --> IGNORE[Write .gitignore]
     INIT --> FLAKE[Write flake.nix template]
-    INIT --> PROMPT[Write spirit_prompt.txt template]
+    INIT --> PROMPT[Write core_prompt.txt template]
     INIT --> PUSH[Push Initial Notes to nb]
     INIT --> DASH[utils.generate_dashboard]
     INIT --> COMMIT[core.commit_all]
@@ -218,12 +218,12 @@ graph TD
     end
 ```
 
-### spirit Launcher
+### Launcher
 ```mermaid
 graph TD
     Start[Start Launcher] --> EnvCheck[Check Environment Variables]
     EnvCheck --> GitCheck[Ensure Develop Branch]
-    GitCheck --> PrepDirs[Prepare .spirit/ Queues & Outbox]
+    GitCheck --> PrepDirs[Prepare .system/ Queues & Outbox]
     PrepDirs --> PrepRegistry[Copy Agent Registry]
     PrepRegistry --> FakePasswd[Create Fake /etc/passwd]
     FakePasswd --> Sandbox[Execute Bubblewrap Sandbox]
@@ -232,13 +232,13 @@ graph TD
         Sandbox --> Mounts[Mount /nix/store, /etc, /dev, /proc]
         Mounts --> Binds[Bind Project Dir & Memory]
         Binds --> Unshare[Unshare All Namespaces]
-        Unshare --> Execute[Run spirit-cli agent]
+        Unshare --> Execute[Run core-cli agent]
     end
     
     Execute --> End[End Launcher]
 ```
 
-### spirit Memory Interface
+### Memory Interface
 ```mermaid
 classDiagram
     class MemoryNote {
@@ -266,7 +266,7 @@ classDiagram
     MemoryInterface ..> MemoryNote : uses
 ```
 
-### spirit Rotation
+### Rotation
 ```mermaid
 graph TD
     A[Start Rotation Loop] --> B[Purge Directives]
@@ -282,7 +282,7 @@ graph TD
     end
 
     subgraph "Rotate Messages"
-        C1[List .spirit/messages]
+        C1[List .system/messages]
         C2{Count > Limit?}
         C2 -->|Yes| C3[Move oldest to archive/]
     end
@@ -297,7 +297,7 @@ graph TD
     end
 ```
 
-### spirit Tasks
+### Tasks
 ```mermaid
 graph TD
     A[Task Operation] --> B{Fetch Task Data}
@@ -326,7 +326,7 @@ graph TD
     end
 ```
 
-### spirit Tui
+### TUI
 ```mermaid
 graph TD
     START[main] --> CHOICE{Select Action}
@@ -352,10 +352,10 @@ graph TD
     RETRY --> REFINE
 ```
 
-### spirit Utils
+### Utilities
 ```mermaid
 graph TD
-    UTILS[spirit_utils.py] --> UNS[update_note_stably]
+    UTILS[core_utils.py] --> UNS[update_note_stably]
     UTILS --> ADR[get_recent_adrs]
     UTILS --> EXP[Expiration Logic]
     UTILS --> DASH[generate_dashboard]
@@ -367,13 +367,13 @@ graph TD
     end
 
     subgraph "Dashboard Generation"
-        DASH --> infra[spirit_infra: get_project_summary]
+        DASH --> infra[core_infra: get_project_summary]
         DASH --> MER[Embed Mermaid Diagrams]
         DASH --> TASK[Format Task Board]
         DASH --> MSG[Format Messages]
     end
 
-    UNS --> mem[spirit_memory_interface]
+    UNS --> mem[core_memory_interface]
     ADR --> mem
 ```
 
@@ -400,7 +400,7 @@ graph TD
     end
 
     subgraph "Caching Mechanism"
-        LoadCache --> FileCache[.spirit/nb_cache.json]
+        LoadCache --> FileCache[.system/nb_cache.json]
         FileCache --> IDMap[ID-to-Filename Mapping]
         FileCache --> ContentMap[Partial Content Cache]
     end
