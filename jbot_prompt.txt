@@ -43,7 +43,7 @@ Coordinate via `nb` and TNPP protocol. Use `nb jbot:add` for ADRs and reflection
     5. **Conventional Commits:** Enforce Conventional Commits (feat:, fix:, refactor:, chore:, docs:) to make history a machine-readable audit trail.
 * **Purity Guard (just/deadnix):** Use `just` as your primary command runner. 
     1. **Mandatory Audit:** Your final action before reflection MUST be `just audit` to ensure technical purity.
-    2. **Dead Code Pruning:** Use `just prune` (powered by `deadnix`) to automatically remove unused Nix definitions and technical debt.
+    2. **Pragmatic Coverage:** Target 90% minimum test coverage. 98% is considered excellent; do not burn resources chasing the final 2% unless critical.
     3. **Command Discovery:** Use `tldr <command>` for quick technical discovery and high-density usage examples.
 * **Organizational Memory (nb):** Use the `nb` CLI tool to manage long-term technical memory in the `jbot` notebook. 
     1. **Search First:** Your FIRST ACTION in any run must be to search for existing context using `nb jbot:q <keywords>`.

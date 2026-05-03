@@ -37,12 +37,20 @@ def test_parse_tasks():
                 "status": "completed",
                 "agent": "tester",
             },
+            {
+                "id": "4",
+                "title": "Task 4",
+                "content": "Status: status:proposal",
+                "status": "proposal",
+                "agent": "engineer",
+            },
         ]
         with patch("jbot_tasks._get_granular_tasks", return_value=mock_tasks):
             data = tasks.parse_tasks()
             assert data["vision"] == "Autonomous AI engineering."
             assert "- [ ] **Task 1** (Agent: lead)" in data["active"]
             assert "- [ ] **Task 2**" in data["backlog"]
+            assert "- [ ] **Task 4** (Agent: engineer)" in data["proposal"]
             assert data["done_count"] == 1
             assert "- [x] **Task 3** (Agent: tester)" in "".join(
                 data["sections"]["completed"]
@@ -54,12 +62,13 @@ def test_get_granular_tasks():
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
-        # Mock ls results for 3 calls (active, backlog, completed)
+        # Mock ls results for 4 calls (active, backlog, completed, proposal)
         mock_client.ls.side_effect = [
             [
                 MagicMock(id="10", title="Real Task"),
                 MagicMock(id="11", title="ADR: Something"),
             ],
+            [],
             [],
             [],
         ]
@@ -168,9 +177,10 @@ def test_get_granular_tasks_missing_data():
         mock_client = MagicMock()
         mock_nb_class.return_value = mock_client
 
-        # 3 calls to ls
+        # 4 calls to ls (active, backlog, completed, proposal)
         mock_client.ls.side_effect = [
             [MagicMock(id="1", title="T1"), MagicMock(id="2", title="T2")],
+            [],
             [],
             [],
         ]
@@ -210,6 +220,7 @@ def test_get_task_board_markdown_full():
         return_value={
             "vision": "World peace.",
             "active": ["- [ ] Task A"],
+            "proposal": ["- [ ] Task P"],
             "backlog": ["- [ ] Task B"],
             "sections": {"completed": ["## Completed\n", "- [x] Task C\n"]},
         },
@@ -217,6 +228,7 @@ def test_get_task_board_markdown_full():
         md = tasks.get_task_board_markdown()
         assert "World peace." in md
         assert "- [ ] Task A" in md
+        assert "- [ ] Task P" in md
         assert "- [ ] Task B" in md
         assert "- [x] Task C" in md
 
@@ -228,6 +240,7 @@ def test_get_task_board_markdown_empty():
         return_value={
             "vision": None,
             "active": [],
+            "proposal": [],
             "backlog": [],
             "sections": {"completed": []},
         },

@@ -200,6 +200,7 @@ def test_generate_dashboard_advanced(mock_get_summary, tmp_path):
             "velocity": 1.0,
             "density": 0.5,
             "kb_total": 10,
+            "total_tokens": 1000,
             "completion_ratio": 50.0,
         },
         "git_status": "Clean",

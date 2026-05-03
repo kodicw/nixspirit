@@ -32,6 +32,7 @@
             pkgs.nixfmt-rfc-style
             pkgs.statix
             pkgs.ruff
+            pkgs.bandit
             pkgs.shellcheck
             pkgs.bats
             pkgs.gemini-cli
@@ -71,6 +72,7 @@
                   pkgs.gum
                   pkgs.gemini-cli
                   pkgs.nb
+                  pkgs.bandit
                   jbot-cli.python
                 ];
               }
@@ -79,6 +81,10 @@
                 cp ${./scripts}/*.py scripts/
                 cp ${./tests}/*.py tests/
                 export PYTHONPATH=$PYTHONPATH:$(pwd)/scripts
+
+                echo "Running Bandit security audit..."
+                bandit -r scripts/ -ll
+
                 pytest --cov=scripts --cov-report=term-missing tests/
                 touch $out
               '';

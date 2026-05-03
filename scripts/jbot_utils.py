@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-193]], [[nb:jbot:adr-100]], [[nb:jbot:adr-105]]
+# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-57]]
 import os
 import re
 import glob
@@ -90,7 +90,7 @@ def is_directive_expired(content: str, filename: Optional[str] = None) -> bool:
 def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") -> bool:
     """Generates a markdown dashboard summarizing the project status.
 
-    Context: [[nb:jbot:adr-193]], [[nb:jbot:adr-100]], [[nb:jbot:adr-105]]
+    Context: [[nb:jbot:adr-57]]
     """
     import jbot_infra as infra
 
@@ -134,6 +134,15 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
             dashboard_content += (
                 f"| {name} | {info.get('role')} | {info.get('description')} |\n"
             )
+        dashboard_content += "\n"
+
+    if tasks_data.get("proposal"):
+        dashboard_content += "## 💡 Proposed Tasks\n"
+        for task in tasks_data["proposal"][:10]:
+            match = re.search(r"\(Agent:\s*([^)]+)\)", task)
+            agent_str = f" [{match.group(1)}]" if match else ""
+            task_clean = re.sub(r"\s*\(Agent:\s*[^)]+\)", "", task)
+            dashboard_content += f"{task_clean}{agent_str}\n"
         dashboard_content += "\n"
 
     dashboard_content += "## 🚀 Active Tasks\n"
@@ -216,14 +225,19 @@ def generate_dashboard(output_file: str = "INDEX.md", project_dir: str = ".") ->
     if summary["metrics"]:
         m = summary["metrics"]
         dashboard_content += "### 📊 Technical ROI (Engineering Metrics)\n"
+        dashboard_content += f"- **Engineering Velocity:** {m.get('velocity', 0.0):.2f} tasks/milestone\n"
         dashboard_content += (
-            f"- **Engineering Velocity:** {m['velocity']:.2f} tasks/milestone\n"
+            f"- **Architectural Density:** {m.get('density', 0.0):.2f} ADRs/milestone\n"
         )
         dashboard_content += (
-            f"- **Architectural Density:** {m['density']:.2f} ADRs/milestone\n"
+            f"- **Knowledge Base Growth:** {m.get('kb_total', 0)} records\n"
         )
-        dashboard_content += f"- **Knowledge Base Growth:** {m['kb_total']} records\n"
-        dashboard_content += f"- **Completion Ratio:** {m['completion_ratio']:.1f}%\n\n"
+        dashboard_content += (
+            f"- **Total Token Usage:** {m.get('total_tokens', 0)} tokens\n"
+        )
+        dashboard_content += (
+            f"- **Completion Ratio:** {m.get('completion_ratio', 0.0):.1f}%\n\n"
+        )
 
     dashboard_content += "## ✅ Recent Milestones\n"
     if summary["milestones"]:

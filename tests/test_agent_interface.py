@@ -12,7 +12,14 @@ import jbot_agent_interface
 def test_gemini_interface():
     interface = jbot_agent_interface.GeminiInterface("/path/to/gemini")
     cmd = interface.get_command("Hello")
-    assert cmd == ["/path/to/gemini", "-y", "-p", "Hello"]
+    assert cmd == [
+        "/path/to/gemini",
+        "-y",
+        "--output-format",
+        "stream-json",
+        "-p",
+        "Hello",
+    ]
 
 
 def test_opencode_interface():
@@ -58,7 +65,7 @@ def test_interface_run_with_rate_limit(tmp_path):
         mock_process.returncode = 0
         mock_popen.return_value = mock_process
 
-        exit_code = interface.run("Hello", "test-agent")
+        exit_code, stats = interface.run("Hello", "test-agent")
 
         assert exit_code == 0
         # Should have slept for approximately 2s
@@ -72,7 +79,7 @@ def test_interface_run_exception(tmp_path):
 
     with patch("subprocess.Popen") as mock_popen:
         mock_popen.side_effect = Exception("Popen failed")
-        exit_code = interface.run("Hello", "test-agent")
+        exit_code, stats = interface.run("Hello", "test-agent")
         assert exit_code == 1
 
 
@@ -93,7 +100,7 @@ def test_interface_rate_limit_invalid_lock(tmp_path):
         mock_process.returncode = 0
         mock_popen.return_value = mock_process
 
-        exit_code = interface.run("Hello", "test-agent")
+        exit_code, stats = interface.run("Hello", "test-agent")
         assert exit_code == 0
 
 
@@ -116,7 +123,7 @@ def test_interface_lock_write_failure(tmp_path):
             return original_open(file, mode, *args, **kwargs)
 
         with patch("builtins.open", side_effect=mocked_open):
-            exit_code = interface.run("Hello", "test-agent")
+            exit_code, stats = interface.run("Hello", "test-agent")
             assert exit_code == 0  # Should pass despite lock write failure
 
 
@@ -132,6 +139,9 @@ def test_abstract_interface():
         def get_command(self, prompt):
             super().get_command(prompt)
             return ["dummy"]
+
+        def _parse_output(self, process, agent_name):
+            return 0, {}
 
     d = Dummy("bin")
     assert d.get_command("hi") == ["dummy"]

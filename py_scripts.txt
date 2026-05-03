@@ -1,0 +1,13 @@
+jbot_agent_interface
+jbot_agent
+jbot_cli
+jbot_core
+jbot_infra
+jbot_infra_updates
+jbot_init
+jbot_memory_interface
+jbot_rotation
+jbot_tasks
+jbot_tui
+jbot_utils
+nb_client

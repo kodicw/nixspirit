@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]]
+# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-63]], [[nb:jbot:adr-66]]
 import os
 import sys
 
@@ -237,7 +237,21 @@ def run_agent(
 
     # 3. Execution via Modular Interface
     ai = interface.get_interface(cli_type or "", cli_bin)
-    exit_code = ai.run(prompt_content, name)
+    exit_code, stats = ai.run(prompt_content, name)
+
+    # 3.5 Record Stats (Token Tracking)
+    if stats:
+        memory_path = os.environ.get("MEMORY_OUTPUT")
+        if memory_path:
+            try:
+                # Load existing memory if any (agent might have written it)
+                memory_data = core.load_json(memory_path, default={})
+                # Merge stats into memory
+                memory_data["stats"] = stats
+                core.save_json(memory_path, memory_data)
+                core.log(f"Recorded execution stats: {stats}", name)
+            except Exception as e:
+                core.log(f"Failed to record stats: {e}", name)
 
     if exit_code != 0:
         core.log(f"Error: AI CLI failed with exit code {exit_code}", name)

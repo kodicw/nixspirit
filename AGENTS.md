@@ -24,4 +24,4 @@ This repository contains strict architectural constraints and specialized toolin
 
 ## ⚠️ Operational Gotchas
 - **API Quota Exhaustion:** The `jbot-agent-*` services share a Gemini API quota. If systemd services are failing with `exit-code 1`, check the logs (`journalctl --user -u jbot-agent-<name>`); it is likely a `429 Too Many Requests` error.
-- **Agent Looping:** Agents (especially the `tester`) will enter infinite loops (e.g., repeatedly logging "done" to `nb`) and burn through API quota if they lack explicit, actionable items. Ensure `TASKS.md` is populated with clear objectives.
+- **Agent Looping:** Agents (especially the `tester`) will enter infinite loops (e.g., repeatedly logging "done" to `nb`) and burn through API quota if they lack explicit, actionable items. Ensure `TASKS.md` is populated with clear objectives. Target 90% minimum coverage.

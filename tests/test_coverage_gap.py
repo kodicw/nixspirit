@@ -13,7 +13,6 @@ import nb_client
 import jbot_core
 import jbot_init
 import jbot_utils
-import jbot_agent
 import jbot_agent_interface
 
 # --- jbot_cli.py ---
@@ -60,9 +59,11 @@ def test_jbot_cli_maintenance_all(capsys):
 
 def test_jbot_cli_main_execution():
     # Target jbot_cli.py:466 via runpy
-    script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../scripts/jbot_cli.py"))
+    script_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../scripts/jbot_cli.py")
+    )
     with patch("sys.argv", ["jbot_cli.py", "--help"]):
-        with patch("sys.exit") as mock_exit:
+        with patch("sys.exit"):
             try:
                 runpy.run_path(script_path, run_name="__main__")
             except SystemExit:
@@ -103,11 +104,11 @@ def test_jbot_infra_sort_key_exception():
     with patch("jbot_infra.get_memory_client") as mock_client_factory:
         mock_client = MagicMock()
         mock_client_factory.return_value = mock_client
-        
+
         note = MagicMock()
-        note.id = "bad_id" # Will cause ValueError when int() called on it
+        note.id = "bad_id"  # Will cause ValueError when int() called on it
         mock_client.ls.return_value = [note]
-        
+
         # We need to trigger the sort_key inside get_note_content
         jbot_infra.get_note_content("type:tasks")
         # If it didn't crash, it handled the exception
@@ -115,18 +116,23 @@ def test_jbot_infra_sort_key_exception():
 
 # --- jbot_agent.py ---
 
+
 def test_jbot_agent_main_execution():
     # Target jbot_agent.py:265
-    script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../scripts/jbot_agent.py"))
+    script_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../scripts/jbot_agent.py")
+    )
     with patch("sys.argv", ["jbot_agent.py", "--help"]):
         with patch("jbot_agent.run_agent"):
-             # Mock run_agent to avoid actual execution
-             try:
-                 runpy.run_path(script_path, run_name="__main__")
-             except SystemExit:
-                 pass
+            # Mock run_agent to avoid actual execution
+            try:
+                runpy.run_path(script_path, run_name="__main__")
+            except SystemExit:
+                pass
+
 
 # --- jbot_agent_interface.py ---
+
 
 def test_jbot_agent_interface_model_coverage():
     # Target jbot_agent_interface.py:81
@@ -134,7 +140,6 @@ def test_jbot_agent_interface_model_coverage():
     cmd = iface.get_command("hello")
     assert "-m" in cmd
     assert "flash" in cmd
-
 
 
 def test_nb_client_clear_cache_exception():

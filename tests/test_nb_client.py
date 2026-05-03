@@ -241,16 +241,19 @@ def test_client_init_mock_less():
     # Test initialization when less is missing
     with (
         patch("os.path.exists") as mock_exists,
-        patch("os.makedirs") as mock_makedirs,
+        patch("tempfile.TemporaryDirectory") as mock_tmp,
         patch("builtins.open", create=True) as mock_open,
         patch("os.chmod") as mock_chmod,
     ):
-        # Mock paths: /tmp/jbot_bin does not exist, less does not exist
-        mock_exists.side_effect = lambda p: False
+        mock_tmp_inst = MagicMock()
+        mock_tmp_inst.name = "/tmp/jbot_bin_random"
+        mock_tmp.return_value = mock_tmp_inst
+
+        # Mock paths: less does not exist
+        mock_exists.return_value = False
 
         client = NbClient(notebook="test")
 
-        assert "/tmp/jbot_bin" in client.env["PATH"]
-        mock_makedirs.assert_called_with("/tmp/jbot_bin", exist_ok=True)
+        assert "/tmp/jbot_bin_random" in client.env["PATH"]
         mock_open.assert_called()
         mock_chmod.assert_called()

@@ -83,8 +83,8 @@ def test_agent_main(agent_env):
 
         assert mock_popen.called
         args, kwargs = mock_popen.call_args
-        # args[0] is the command list: [gemini_pkg, "-y", "-p", prompt_content]
-        prompt_arg = args[0][3]
+        cmd = args[0]
+        prompt_arg = cmd[cmd.index("-p") + 1]
         assert "Hello dev, Maintain JBot" in prompt_arg
 
 
@@ -125,7 +125,8 @@ def test_agent_with_rag_and_human(agent_env):
             jbot_agent.main()
 
             args, _ = mock_popen.call_args
-            prompt = args[0][3]
+            cmd = args[0]
+            prompt = cmd[cmd.index("-p") + 1]
             assert "[ceo] Vision set" in prompt
             assert "[lead] Code done" in prompt
             assert "Focus on tests" in prompt
@@ -205,7 +206,8 @@ def test_agent_git_tree(agent_env):
         jbot_agent.main()
 
         args, _ = mock_popen.call_args
-        prompt = args[0][3]
+        cmd = args[0]
+        prompt = cmd[cmd.index("-p") + 1]
         assert "file1" in prompt
 
 
@@ -245,7 +247,8 @@ def test_agent_main_nb_prompt(agent_env):
 
             jbot_agent.main()
             args, _ = mock_popen.call_args
-            prompt_arg = args[0][3]
+            cmd = args[0]
+            prompt_arg = cmd[cmd.index("-p") + 1]
             assert "This is a prompt from nb." in prompt_arg
 
 
@@ -261,7 +264,8 @@ def test_agent_git_tree_large(agent_env):
             mock_popen.return_value = mock_process
             jbot_agent.main()
             args, _ = mock_popen.call_args
-            prompt = args[0][3]
+            cmd = args[0]
+            prompt = cmd[cmd.index("-p") + 1]
             assert "file50" not in prompt
             assert "(truncated)" in prompt
 
@@ -277,7 +281,8 @@ def test_agent_template_error(agent_env):
             mock_popen.return_value = mock_process
             jbot_agent.main()
             args, _ = mock_popen.call_args
-            prompt = args[0][3]
+            cmd = args[0]
+            prompt = cmd[cmd.index("-p") + 1]
             # Falls back to raw prompt content
             assert "Hello {{ agent.name }}" in prompt
 

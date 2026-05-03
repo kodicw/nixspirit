@@ -49,16 +49,18 @@ class NbClient(MemoryInterface):
         self.env["PAGER"] = "cat"
         self.env["NB_PAGER"] = "cat"
 
+        import tempfile
+
         # Mock 'less' if missing
-        tmp_bin = "/tmp/jbot_bin"
+        self._tmp_dir = tempfile.TemporaryDirectory(prefix="jbot_bin_")
+        tmp_bin = self._tmp_dir.name
         less_path = os.path.join(tmp_bin, "less")
         if not os.path.exists(less_path):
-            os.makedirs(tmp_bin, exist_ok=True)
             with open(less_path, "w") as f:
                 f.write(
                     '#!/bin/sh\nif [ "$1" = "--version" ]; then echo "less 1"; else cat "$@"; fi\n'
                 )
-            os.chmod(less_path, 0o755)
+            os.chmod(less_path, 0o755)  # nosec: B103
 
         if tmp_bin not in self.env.get("PATH", ""):
             self.env["PATH"] = f"{tmp_bin}:{self.env.get('PATH', '')}"

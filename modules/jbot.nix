@@ -182,7 +182,6 @@ let
     pkgs.pandoc
     pkgs.w3m
     pkgs.bandit
-    pkgs.safety
     jbotPython
     jbot-cli
   ];

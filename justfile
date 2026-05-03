@@ -13,6 +13,7 @@ format:
 lint:
     statix check .
     ruff check .
+    bandit -r scripts/ -ll
 
 # Prune unused Nix code and dead files
 prune:

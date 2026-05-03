@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-210]]
+# Context: [[nb:jbot:adr-6]], [[nb:jbot:adr-63]], [[nb:jbot:adr-66]], [[nb:jbot:adr-57]], [[nb:jbot:adr-210]]
 import os
 import sys
 
@@ -34,6 +34,11 @@ def get_status(project_dir: str) -> None:
     print(f"Nix Flake: {summary['nix_metadata']}")
 
     tasks_data = summary["tasks"]
+    if tasks_data.get("proposal"):
+        print(f"\n💡 Proposed Tasks ({len(tasks_data['proposal'])}):")
+        for t in tasks_data["proposal"][:5]:
+            print(f"  {t}")
+
     print(f"\n🚀 Active Tasks ({len(tasks_data['active'])}):")
     for t in tasks_data["active"][:5]:
         print(f"  {t}")
@@ -53,6 +58,10 @@ def get_tasks(project_dir: str, show_all: bool = False) -> None:
     if not show_all:
         print("## Strategic Vision")
         print(tasks_data["vision"])
+        if tasks_data.get("proposal"):
+            print("\n## Proposed Tasks")
+            for t in tasks_data["proposal"]:
+                print(t)
         print("\n## Active Tasks")
         for t in tasks_data["active"]:
             print(t)
@@ -240,12 +249,15 @@ def main():
     add_parser.add_argument(
         "-b", "--backlog", action="store_true", help="Add to backlog"
     )
+    add_parser.add_argument(
+        "-p", "--proposal", action="store_true", help="Propose task"
+    )
     update_parser = task_subparsers.add_parser("update", help="Update task")
     update_parser.add_argument("search", help="Search string")
     update_parser.add_argument("-t", "--text", help="New description")
     update_parser.add_argument("-a", "--agent", help="Reassign agent")
     update_parser.add_argument(
-        "-m", "--move", choices=["active", "backlog"], help="Move section"
+        "-m", "--move", choices=["active", "backlog", "proposal"], help="Move section"
     )
     done_parser = task_subparsers.add_parser("done", help="Mark completed")
     done_parser.add_argument("search", help="Search string")
@@ -346,7 +358,7 @@ def main():
         if args.task_action == "list":
             get_tasks(project_root, args.all)
         elif args.task_action == "add":
-            if tasks.add_task(args.text, args.agent, args.backlog):
+            if tasks.add_task(args.text, args.agent, args.backlog, args.proposal):
                 print(f"Added task: {args.text}")
         elif args.task_action == "update":
             if tasks.update_task(args.search, args.text, args.agent, args.move):

@@ -95,9 +95,20 @@ nb jbot:q "architecture"
 
 Nix Spirit adheres to a strict **Single-User Isolation** model to ensure technical purity and internal cohesion.
 
-1.  **Internal Cohesion**: All components of a single Nix Spirit organization (agents, infrastructure, knowledge base) MUST run under the same Linux user account. This prevents permissions friction and ensures a unified technical memory.
-2.  **External Isolation**: Multi-project or cross-organization management is handled at the NixOS/Home Manager level. To manage entirely different organizations, deploy Nix Spirit to separate Linux user accounts.
-3.  **Process Sandboxing**: Each agent executes within a `bubblewrap` container with `ProtectHome=read-only` and `ProtectSystem=strict` mandates. Access is restricted to the specific project directory and required configuration paths.
+### 1. Internal Cohesion (Single-User)
+All components of a single Nix Spirit organization (agents, infrastructure, knowledge base) MUST run under the same Linux user account. This prevents permissions friction and ensures a unified technical memory via a single `nb` notebook. By consolidating operations within one user, we maintain a tight feedback loop and eliminate the complexity of cross-user synchronization.
+
+### 2. External Isolation (Multi-User NixOS Patterns)
+While an individual organization is flat, **external isolation** between different projects or entities is enforced at the OS level using standard NixOS multi-user patterns:
+*   **User-Level Sandboxing**: To manage entirely separate organizations or projects with zero cross-contamination, deploy them to different Linux user accounts. NixOS handles the underlying isolation (UID/GID separation, home directory permissions).
+*   **Declarative Multi-Tenancy**: Use Home Manager to declaratively roll out Nix Spirit configurations to multiple users on a single NixOS system. Each user gets their own `systemd.user` instances and isolated `bubblewrap` environments.
+*   **Contextual Firewalling**: Agents in one user account cannot access the `nb` knowledge base or `.gemini` credentials of another user, even if they share the same Nix store, due to strict Linux filesystem permissions and `bwrap` constraints.
+
+### 3. Process Sandboxing (Bubblewrap)
+Each agent executes within a **Stateless Agent Execution Model (SAEM)** enforced by `bubblewrap`:
+*   **Strict Read-Only**: The entire system and home directory are mounted as read-only by default.
+*   **Surgical Write Access**: Agents are only granted write access to their specific `PROJECT_DIR` and necessary communication queues (`.jbot/queues`, `.jbot/outbox`).
+*   **Stateless Infrastructure**: Infrastructure logs and agent registries are provided as read-only binds, preventing agents from tampering with the organizational heartbeat.
 
 ---
 

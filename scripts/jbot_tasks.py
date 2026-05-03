@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-57]], [[nb:jbot:adr-210]]
+# Context: [[nb:jbot:adr-57]], [[nb:jbot:adr-2]], [[nb:jbot:adr-62]], [[nb:jbot:adr-66]]
 import re
 from typing import Dict, Any, Optional, List
 
@@ -12,7 +12,7 @@ def _get_granular_tasks() -> List[Dict[str, Any]]:
     tasks_list = []
 
     # Fetch tasks by status to avoid listing everything
-    for status in ["active", "backlog", "completed"]:
+    for status in ["active", "backlog", "completed", "proposal"]:
         notes = client.ls(tags=["type:task", f"status:{status}"])
 
         for note in notes:
@@ -64,12 +64,14 @@ def parse_tasks() -> Dict[str, Any]:
 
     data = {
         "active": [],
+        "proposal": [],
         "done_count": 0,
         "backlog": [],
         "vision": vision,
         "sections": {
             "header": [],
             "vision": [f"## Strategic Vision\n> {vision}\n"] if vision else [],
+            "proposal": ["## Proposed Tasks\n"],
             "active": ["## Active Tasks\n"],
             "backlog": ["## Backlog\n"],
             "completed": ["## ✅ Completed Tasks\n"],
@@ -86,6 +88,9 @@ def parse_tasks() -> Dict[str, Any]:
         if t["status"] == "active":
             data["active"].append(task_line)
             data["sections"]["active"].append(task_line + "\n")
+        elif t["status"] == "proposal":
+            data["proposal"].append(task_line)
+            data["sections"]["proposal"].append(task_line + "\n")
         elif t["status"] == "backlog":
             data["backlog"].append(task_line)
             data["sections"]["backlog"].append(task_line + "\n")
@@ -134,12 +139,20 @@ def parse_tasks() -> Dict[str, Any]:
 
 
 def add_task(
-    task_text: str, agent: Optional[str] = None, backlog: bool = False
+    task_text: str,
+    agent: Optional[str] = None,
+    backlog: bool = False,
+    proposal: bool = False,
 ) -> bool:
     """Adds a new granular task as an nb note."""
     client = get_memory_client()
 
-    status_tag = "status:backlog" if backlog else "status:active"
+    status_tag = "status:active"
+    if backlog:
+        status_tag = "status:backlog"
+    elif proposal:
+        status_tag = "status:proposal"
+
     content = f"Status: {status_tag}\n"
     if agent:
         content += f"Agent: {agent}\n"
@@ -178,7 +191,7 @@ def update_task(
     final_agent = agent if agent else target_task["agent"]
     final_status = target_task["status"]
     if move_to:
-        final_status = move_to  # active or backlog
+        final_status = move_to  # active, backlog, or proposal
 
     status_tag = f"status:{final_status}"
     content = f"Status: {status_tag}\n"
@@ -225,7 +238,7 @@ def complete_task(task_text_search: str) -> bool:
 def get_task_board_markdown() -> str:
     """Returns the aggregated task board as a markdown string.
 
-    Context: [[nb:jbot:adr-210]]
+    Context: [[nb:jbot:adr-2]]
     """
     data = parse_tasks()
     output = []
@@ -233,6 +246,13 @@ def get_task_board_markdown() -> str:
     if data["vision"]:
         output.append("## Strategic Vision")
         output.append(f"> {data['vision']}\n")
+
+    output.append("## Proposed Tasks")
+    if data["proposal"]:
+        output.extend([t.strip() for t in data["proposal"]])
+    else:
+        output.append("No proposed tasks.")
+    output.append("")
 
     output.append("## Active Tasks")
     if data["active"]:

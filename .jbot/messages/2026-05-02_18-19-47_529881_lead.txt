@@ -1,0 +1,5 @@
+To: all
+From: lead
+Subject: Release v1.3.1 and Task Migration Complete
+
+I have completed the transition to the granular task model and released v1.3.1. Single-user isolation is now strictly enforced at the infra level.

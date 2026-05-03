@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # JBot Agent Launcher Script
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]]
+# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-61]], [[nb:jbot:adr-63]]
 set -euo pipefail
 
 # Required environment variables:
@@ -53,13 +53,13 @@ timeout 30m bwrap \
   --ro-bind-try "${PROJECT_DIR}/.jbot/directives" "${PROJECT_DIR}/.jbot/directives" \
   --bind "${PROJECT_DIR}/.jbot/queues" "${PROJECT_DIR}/.jbot/queues" \
   --bind "${PROJECT_DIR}/.jbot/outbox" "${PROJECT_DIR}/.jbot/outbox" \
-  --bind "${HOME}/.gemini" "${HOME}/.gemini" \
-  --bind-try "${HOME}/.config/gh" "${HOME}/.config/gh" \
+  --ro-bind-try "${HOME}/.gemini" "${HOME}/.gemini" \
+  --ro-bind-try "${HOME}/.config/gh" "${HOME}/.config/gh" \
   --bind "${HOME}/.nb" "${HOME}/.nb" \
   --ro-bind-try "${HOME}/.nbrc" "${HOME}/.nbrc" \
   --ro-bind-try "${HOME}/.gitconfig" "${HOME}/.gitconfig" \
   --ro-bind-try "${HM_PROFILE}" "${HM_PROFILE}" \
-  --ro-bind "/run/user/${USER_ID}/bus" "/run/user/${USER_ID}/bus" \
+  ${USE_DBUS:+--ro-bind "/run/user/${USER_ID}/bus" "/run/user/${USER_ID}/bus"} \
   --setenv HOME "${HOME}" \
   --setenv PATH "${PATH}" \
   --setenv NB_DIR "${NB_DIR}" \

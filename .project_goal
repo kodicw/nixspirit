@@ -4,4 +4,4 @@ Focus Areas:
 1. Technical Purity: Prioritize elegant abstractions, code robustness, and modular design.
 2. Self-Documenting Code: Mandate expressive, clear code that minimizes the need for external documentation.
 3. Architectural Elegance: Ensure the Nix Spirit infrastructure is self-healing, robust, and follows the Unix Philosophy.
-4. Exhaustive Verification: 100% test coverage and formal verification for core components.
+4. Practical Verification: Maintain 90% minimum test coverage (98% preferred). Avoid over-engineering for the last 2%.

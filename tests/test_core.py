@@ -174,10 +174,14 @@ def test_get_notebook_name():
             with patch("jbot_core.read_file", return_value="file-nb"):
                 assert core.get_notebook_name() == "file-nb"
 
-    # Test line 64 (fallback)
+    # Test line 64 (basename fallback)
     with patch("jbot_core.get_project_root", return_value="/tmp/proj"):
         with patch("os.path.exists", return_value=False):
-            assert core.get_notebook_name() == "jbot"
+            assert core.get_notebook_name() == "proj"
+
+    # Final fallback if root is empty
+    with patch("jbot_core.get_project_root", return_value=""):
+        assert core.get_notebook_name() == "jbot"
 
 
 def test_init_git_success():

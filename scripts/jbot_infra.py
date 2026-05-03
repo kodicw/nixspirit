@@ -1,4 +1,4 @@
-# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-62]], [[nb:jbot:adr-193]], [[nb:jbot:adr-210]]
+# Context: [[nb:jbot:adr-2]], [[nb:jbot:adr-6]], [[nb:jbot:adr-62]], [[nb:jbot:adr-61]], [[nb:jbot:adr-63]], [[nb:jbot:adr-66]], [[nb:jbot:adr-57]], [[nb:jbot:adr-193]], [[nb:jbot:adr-210]]
 import os
 import json
 import re
@@ -165,7 +165,7 @@ def get_note_content(query: str, project_dir: str = ".") -> Optional[str]:
         note_id = None
 
         if query.startswith("type:") or query.startswith("#"):
-            tag = query.replace("type:", "").replace("#", "")
+            tag = query.lstrip("#")
             # Use ls for tag queries as it is more precise than q
             notes = client.ls(tags=[tag])
             if notes:
@@ -270,7 +270,7 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
     Aggregates all relevant project status information into a single structure.
     Useful for both CLI status display and dashboard generation.
 
-    Context: [[nb:jbot:adr-210]], [[nb:jbot:adr-193]]
+    Context: [[nb:jbot:adr-62]]
     """
     try:
         tasks_data = tasks.parse_tasks()
@@ -315,6 +315,22 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
         kb_total = len(all_notes)
         adr_total = len(adr_notes)
 
+        # Aggregate Token Stats
+        total_tokens = 0
+        memory_notes = client.ls(tags=["memory"])
+        for note in memory_notes:
+            content_str = client.show(note.id)
+            if content_str:
+                try:
+                    # Find JSON block in content (it might be surrounded by nb headers)
+                    json_match = re.search(r"(\{.*\})", content_str, re.DOTALL)
+                    if json_match:
+                        data = json.loads(json_match.group(1))
+                        stats = data.get("stats", {})
+                        total_tokens += stats.get("total_tokens", 0)
+                except json.JSONDecodeError:
+                    pass
+
         velocity = (
             tasks_data["done_count"] / milestone_count if milestone_count > 0 else 0
         )
@@ -323,6 +339,7 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
             len(tasks_data["active"])
             + len(tasks_data["backlog"])
             + tasks_data["done_count"]
+            + len(tasks_data.get("proposal", []))
         )
         completion_ratio = (
             (tasks_data["done_count"] / total_tasks * 100) if total_tasks > 0 else 0
@@ -331,6 +348,8 @@ def get_project_summary(project_dir: str = ".") -> Dict[str, Any]:
             "velocity": velocity,
             "density": density,
             "kb_total": kb_total,
+            "adr_total": adr_total,
+            "total_tokens": total_tokens,
             "completion_ratio": completion_ratio,
         }
     except Exception as e:

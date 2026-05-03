@@ -115,7 +115,7 @@ def test_cli_main_add_task(tmp_path, capsys):
 
         captured = capsys.readouterr()
         assert "Added task: New Task" in captured.out
-        mock_add.assert_called_with("New Task", "lead", False)
+        mock_add.assert_called_with("New Task", "lead", False, False)
 
         # Backlog Task
         with patch(
@@ -126,7 +126,18 @@ def test_cli_main_add_task(tmp_path, capsys):
 
         captured = capsys.readouterr()
         assert "Added task: Backlog Task" in captured.out
-        mock_add.assert_called_with("Backlog Task", None, True)
+        mock_add.assert_called_with("Backlog Task", None, True, False)
+
+        # Proposal Task
+        with patch(
+            "sys.argv",
+            ["jbot_cli.py", "-d", str(tmp_path), "task", "add", "Prop Task", "-p"],
+        ):
+            jbot_cli.main()
+
+        captured = capsys.readouterr()
+        assert "Added task: Prop Task" in captured.out
+        mock_add.assert_called_with("Prop Task", None, False, True)
 
 
 def test_cli_task_list(tmp_path, capsys):
@@ -742,3 +753,64 @@ def test_cli_init_success(tmp_path, capsys):
         ):
             jbot_cli.main()
             assert f"Project initialized in {tmp_path}" in capsys.readouterr().out
+
+
+def test_cli_get_messages_empty(tmp_path, capsys):
+    with patch("jbot_infra.get_recent_messages", return_value=[]):
+        with patch("sys.argv", ["jbot_cli.py", "-d", str(tmp_path), "messages"]):
+            jbot_cli.main()
+            assert "No messages directory found." in capsys.readouterr().out
+
+
+def test_cli_maintenance_all_no_env(tmp_path, capsys):
+    import os
+    import pytest
+
+    with patch.dict(os.environ, {}, clear=True):
+        with patch(
+            "sys.argv",
+            ["jbot_cli.py", "-d", str(tmp_path), "maintenance", "run", "--all"],
+        ):
+            with pytest.raises(SystemExit) as e:
+                jbot_cli.main()
+            assert e.value.code == 1
+            assert "Error: --all requires DISCOVERY_ROOT" in capsys.readouterr().out
+
+
+def test_cli_maintenance_all_no_projects(tmp_path, capsys):
+    import os
+
+    with patch.dict(os.environ, {"DISCOVERY_ROOT": str(tmp_path)}):
+        with patch("jbot_infra.discover_projects", return_value=[]):
+            with patch(
+                "sys.argv",
+                ["jbot_cli.py", "-d", str(tmp_path), "maintenance", "run", "--all"],
+            ):
+                jbot_cli.main()
+                assert "No projects discovered" in capsys.readouterr().out
+
+
+def test_cli_maintenance_all_with_projects(tmp_path, capsys):
+    import os
+
+    with patch.dict(os.environ, {"DISCOVERY_ROOT": str(tmp_path)}):
+        with patch("jbot_infra.discover_projects", return_value=["proj1", "proj2"]):
+            with patch("jbot_infra.run_maintenance") as mock_run:
+                with patch(
+                    "sys.argv",
+                    ["jbot_cli.py", "-d", str(tmp_path), "maintenance", "run", "--all"],
+                ):
+                    jbot_cli.main()
+                    assert mock_run.call_count == 2
+                    assert "Discovered 2 projects" in capsys.readouterr().out
+
+
+def test_jbot_cli_main_execution():
+    script_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "scripts", "jbot_cli.py")
+    )
+    result = subprocess.run(
+        ["python3", script_path, "--help"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert "usage:" in result.stdout
