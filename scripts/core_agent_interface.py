@@ -99,26 +99,63 @@ class GeminiInterface(AiInterface):
         self, process: subprocess.Popen, agent_name: str
     ) -> Tuple[int, Dict[str, Any]]:
         stats = {}
+        # Use a flag to track if we're in the middle of a multi-line message
+        in_message = False
+        
         for line in process.stdout:
             line = line.strip()
             if not line:
                 continue
+                
             if line.startswith("{") and line.endswith("}"):
                 try:
                     data = json.loads(line)
-                    if data.get("type") == "message":
-                        # Print assistant content as it arrives
-                        if data.get("role") == "assistant" and "content" in data:
-                            print(data["content"], end="", flush=True)
-                    elif data.get("type") == "result":
+                    msg_type = data.get("type")
+                    
+                    if msg_type == "message":
+                        role = data.get("role", "unknown")
+                        content = data.get("content", "")
+                        
+                        if role == "assistant":
+                            if not in_message:
+                                print(f"\n[{agent_name}] Thought: ", end="", flush=True)
+                                in_message = True
+                            print(content, end="", flush=True)
+                        elif role == "user":
+                            if in_message:
+                                print("\n")
+                                in_message = False
+                            # User messages in the stream are usually tool outputs
+                            print(f"[{agent_name}] Tool Output: {content}", flush=True)
+                            
+                    elif msg_type == "call":
+                        if in_message:
+                            print("\n")
+                            in_message = False
+                        func = data.get("call", {}).get("name", "unknown")
+                        args = data.get("call", {}).get("arguments", "{}")
+                        print(f"[{agent_name}] Tool Call: {func}({args})", flush=True)
+                        
+                    elif msg_type == "result":
+                        if in_message:
+                            print("\n")
+                            in_message = False
                         stats = data.get("stats", {})
+                        
                 except json.JSONDecodeError:
-                    # Not valid JSON, just print it
-                    print(line)
+                    if in_message:
+                        print("\n")
+                        in_message = False
+                    print(f"[{agent_name}] Raw: {line}", flush=True)
             else:
-                # Regular output (e.g. YOLO warnings)
-                print(line)
+                if in_message:
+                    print("\n")
+                    in_message = False
+                print(f"[{agent_name}] Info: {line}", flush=True)
 
+        if in_message:
+            print("\n")
+            
         process.wait()
         return process.returncode, stats
 
