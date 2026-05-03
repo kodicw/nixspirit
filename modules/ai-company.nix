@@ -1,7 +1,7 @@
 _: {
-  programs.spirit = {
+  programs.nixspirit = {
     enable = true;
-    projectDir = "/home/kodicw/code/spirit";
+    projectDir = "/home/kodicw/code/jbot";
 
     agents = {
       # --- spirit Hierarchical Specialist Organization ---
