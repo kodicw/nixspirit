@@ -22,6 +22,13 @@ from jbot_memory_interface import get_memory_client
 
 def get_status(project_dir: str) -> None:
     """Displays the high-level project vision, environment context, and active tasks."""
+    # 0. Pre-flight checks
+    warnings = core.check_config(project_dir)
+    if warnings:
+        print("\n⚠️ Configuration Warnings:")
+        for w in warnings:
+            print(f"  - {w}")
+
     summary = infra.get_project_summary(project_dir)
 
     print("\n--- JBot Organization Status ---")
@@ -46,7 +53,8 @@ def get_status(project_dir: str) -> None:
         print(f"  ... and {len(tasks_data['active']) - 5} more.")
 
     print(f"\n📈 Overall Progress: {tasks_data['done_count']} tasks completed.")
-    print("\n💡 Tip: Use 'nb jbot:q <query>' to search technical memory.")
+    notebook = core.get_notebook_name(project_dir)
+    print(f"\n💡 Tip: Use 'nb {notebook}:q <query>' to search technical memory.")
 
 
 def get_tasks(project_dir: str, show_all: bool = False) -> None:

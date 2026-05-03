@@ -66,7 +66,40 @@ def get_notebook_name(
         return os.path.basename(root)
 
     # 4. Final Fallback
-    return "jbot"
+    return "nixspirit"
+
+
+def check_config(project_dir: str) -> List[str]:
+    """
+    Performs pre-flight checks on the project configuration.
+    Returns a list of warning/error messages.
+    """
+    warnings = []
+    root = get_project_root(project_dir)
+
+    # 1. Check for .project_goal
+    if not os.path.exists(os.path.join(root, ".project_goal")):
+        warnings.append(f"CRITICAL: .project_goal missing in {root}. Agents will lack vision.")
+
+    # 2. Check for .jbot/notebook
+    config_path = os.path.join(root, ".jbot/notebook")
+    if not os.path.exists(config_path):
+        warnings.append(f"WARNING: .jbot/notebook missing. Defaulting to '{get_notebook_name(project_dir)}'.")
+    else:
+        nb_name = read_file(config_path).strip()
+        # Verify notebook exists in nb
+        try:
+            res = subprocess.run(["nb", "notebooks", "--names"], capture_output=True, text=True, env={**os.environ, "EDITOR": "cat"})
+            if nb_name not in res.stdout.splitlines():
+                warnings.append(f"CRITICAL: Notebook '{nb_name}' defined in .jbot/notebook does not exist in 'nb'.")
+        except Exception:
+            pass
+
+    # 3. Check for agents.json
+    if not os.path.exists(os.path.join(root, ".jbot/agents.json")):
+        warnings.append("WARNING: .jbot/agents.json missing. No agents are registered for this project.")
+
+    return warnings
 
 
 def load_json(file_path: str, default: Any = None) -> Any:

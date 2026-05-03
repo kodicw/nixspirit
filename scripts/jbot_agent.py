@@ -192,6 +192,16 @@ def run_agent(
         )
         sys.exit(1)
 
+    # Pre-flight checks
+    warnings = core.check_config(project_dir)
+    if warnings:
+        core.log("⚠️ Configuration Warnings detected during pre-flight:", name)
+        for w in warnings:
+            core.log(f"  - {w}", name)
+        if any(w.startswith("CRITICAL") for w in warnings):
+            core.log("FATAL: Critical configuration errors. Aborting.", name)
+            sys.exit(1)
+
     core.ensure_single_user(project_dir)
     core.switch_to_develop(project_dir)
     core.log(f"Starting execution loop for {role}...", name)
